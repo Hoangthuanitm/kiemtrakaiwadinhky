@@ -1,508 +1,691 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Kiểm Tra Hội Thoại Tiếng Nhật</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore-compat.js"></script>
-    <!-- DOMPurify for input sanitization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js"></script>
-    <style>
-        #dialogueTable td, #dialogueTable th {
-            padding: 10px;
-        }
-        #dialogueTable th {
-            background-color: #2563eb;
-            color: white;
-            text-align: left;
-        }
-        #dialogueTable th:nth-child(1), #dialogueTable td:nth-child(1) { width: 80px; white-space: nowrap; } /* Lớp */
-        #dialogueTable th:nth-child(2), #dialogueTable td:nth-child(2) { width: 120px; white-space: nowrap; } /* Phụ Trách */
-        #dialogueTable th:nth-child(3), #dialogueTable td:nth-child(3) { width: 120px; white-space: nowrap; } /* Nghiệp Đoàn */
-        #dialogueTable th:nth-child(4), #dialogueTable td:nth-child(4) { width: 150px; white-space: nowrap; } /* Công Ty */
-        #dialogueTable th:nth-child(5), #dialogueTable td:nth-child(5) { width: 250px; word-wrap: break-word; } /* Ghi Chú */
-        #dialogueTable th:nth-child(6), #dialogueTable td:nth-child(6) { width: 130px; white-space: nowrap; } /* Ngày Kiểm Tra */
-        #dialogueTable th:nth-child(7), #dialogueTable td:nth-child(7) { width: 150px; text-align: center; white-space: nowrap; } /* Hành Động */
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Check Kaiwa - Học Viên</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f4f6f9; padding: 20px; color: #333; }
+    .container { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 20px; color: #2c3e50; }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; align-items: center; }
+    .filters select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; flex: 1; min-width: 150px; }
+    .btn-start {
+      padding: 12px 30px; background: #27ae60; color: white; border: none; border-radius: 6px;
+      font-size: 16px; cursor: not-allowed; opacity: 0.5; transition: all 0.3s;
+    }
+    .btn-start.enabled { background: #27ae60; opacity: 1; cursor: pointer; }
+    .btn-start.enabled:hover { background: #219653; }
 
-        .table-container {
-            overflow-x: auto;
-        }
-        #dialogueTable {
-            min-width: 1000px;
-            table-layout: fixed;
-            border-collapse: collapse;
-        }
-        #dialogueTable tbody tr {
-            border-bottom: 1px solid #e5e7eb;
-        }
-        #dialogueModal .modal-content {
-            max-height: 90vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-            scrollbar-color: #888 #f1f1f1;
-        }
-        #dialogueModal .modal-content::-webkit-scrollbar {
-            width: 8px;
-        }
-        #dialogueModal .modal-content::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        #dialogueModal .modal-content::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-        #dialogueModal .modal-content::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-        @media (max-width: 640px) {
-            #dialogueModal .modal-content {
-                width: 90vw;
-                max-width: none;
-            }
-        }
-        .hidden {
-            display: none;
-        }
-    </style>
+    .lesson-filter { margin: 15px 0; text-align: center; }
+    .lesson-filter select {
+      padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; width: 200px;
+    }
+
+    .loading { text-align: center; padding: 20px; color: #777; }
+    .student-list { margin-top: 20px; display: none; }
+    .student-card { border: 1px solid #eee; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+    .student-header { background: #3498db; color: white; padding: 12px 16px; font-weight: bold; }
+    .question-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .question-table th, .question-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    .question-table th { background: #f8f9fa; }
+    .question-id { font-weight: bold; color: #2c3e50; width: 50px; }
+    .question-text { flex: 1; }
+    .check-col { text-align: center; width: 80px; }
+
+    .check-circle {
+      width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd;
+      display: inline-block; cursor: pointer;
+    }
+    .check-circle.pass {
+      background: #27ae60; border-color: #27ae60;
+    }
+    .check-circle.fail {
+      background: #e74c3c; border-color: #e74c3c;
+    }
+
+    .summary { margin: 10px 0; font-weight: bold; color: #27ae60; }
+    .fail-summary { color: #e74c3c; }
+    .filter-fail { margin: 20px 0; text-align: center; display: block; } /* Default visible for history */
+    .filter-fail button { padding: 12px 24px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    .filter-fail button:hover { background: #d35400; }
+    .fail-list { margin-top: 20px; background: #fdf2e9; padding: 15px; border-radius: 8px; border: 1px solid #f39c12; display: none; }
+    .fail-item { margin: 8px 0; padding: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .no-data { text-align: center; color: #95a5a6; padding: 40px; font-size: 18px; }
+    #failButton { display: none; } /* Initial hidden for fail button */
+    #historyButton { display: inline-block; } /* Initial visible for history */
+    @media (max-width: 768px) {
+      .filters { flex-direction: column; }
+      .question-table { font-size: 13px; }
+    }
+  </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div id="loading" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-600"></div>
+<body>
+  <div class="container">
+    <h1>Check Kaiwa - Học Viên</h1>
+
+    <div class="filters">
+      <select id="class" onchange="onFilterChange()">
+        <option value="">Chọn Lớp</option>
+      </select>
+      <select id="personInCharge" onchange="onPersonChange()" disabled>
+        <option value="">Chọn Phụ Trách</option>
+      </select>
+      <select id="union" onchange="onUnionChange()" disabled>
+        <option value="">Chọn Nghiệp Đoàn</option>
+      </select>
+      <select id="company" onchange="onCompanyChange()" disabled>
+        <option value="">Chọn Công Ty</option>
+      </select>
+      <select id="student" onchange="updateStartButton()" disabled>
+        <option value="">Chọn Họ và Tên</option>
+      </select>
+      <button id="btnStart" class="btn-start" disabled onclick="startChecking()">Bắt đầu kiểm tra</button>
     </div>
 
-    <div class="container mx-auto p-6">
-        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800 mb-4">Quản Lý Kiểm Tra Hội Thoại Tiếng Nhật</h1>
-            <div class="flex items-center space-x-4">
-                <div class="relative w-full max-w-md">
-                    <input type="text" id="searchInput" placeholder="Tìm kiếm..." 
-                           class="w-full p-3 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                </div>
-                <button onclick="addNewDialogue()" 
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-                    <i class="fas fa-plus mr-2"></i>Thêm Kiểm Tra
-                </button>
-            </div>
-        </div>
+    <div class="loading" id="loading">Đang tải dữ liệu học viên...</div>
+    <div id="studentContainer" class="student-list"></div>
 
-        <div class="table-container bg-white shadow-md rounded-lg">
-            <table id="dialogueTable" class="w-full table-auto">
-                <thead class="bg-blue-600 text-white">
-                    <tr>
-                        <th class="px-4 py-3 text-left">Lớp</th>
-                        <th class="px-4 py-3 text-left">Phụ Trách</th>
-                        <th class="px-4 py-3 text-left">Nghiệp Đoàn</th>
-                        <th class="px-4 py-3 text-left">Công Ty</th>
-                        <th class="px-4 py-3 text-left">Ghi Chú</th>
-                        <th class="px-4 py-3 text-left">Ngày Kiểm Tra</th>
-                        <th class="px-4 py-3 text-center">Hành Động</th>
-                    </tr>
-                </thead>
-                <tbody id="dialogueTableBody" class="text-gray-700"></tbody>
-            </table>
-        </div>
+    <div class="lesson-filter" id="lessonFilter" style="display:none;">
+      <strong>Lọc theo bài:</strong>
+      <select id="lessonSelect" onchange="currentLesson = this.value; renderStudents();">
+        <option value="all">Tất cả các bài</option>
+      </select>
     </div>
 
-    <div id="dialogueModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center">
-        <div class="modal-content bg-white rounded-lg p-6 w-full max-w-lg">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-4">Thêm Kiểm Tra Hội Thoại</h2>
-            <form id="dialogueForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Lớp</label>
-                    <select id="class" class="w-full p-2 border rounded-lg" required>
-                        <option value="">Chọn Lớp</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Phụ Trách</label>
-                    <select id="personInCharge" class="w-full p-2 border rounded-lg" required>
-                        <option value="">Chọn Phụ Trách</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Nghiệp Đoàn</label>
-                    <select id="union" class="w-full p-2 border rounded-lg" disabled>
-                        <option value="">Chọn Nghiệp Đoàn</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Công Ty</label>
-                    <select id="company" class="w-full p-2 border rounded-lg" disabled>
-                        <option value="">Chọn Công Ty</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Ghi Chú</label>
-                    <textarea id="note" class="w-full p-2 border rounded-lg" rows="4" placeholder="Nhập ghi chú về buổi kiểm tra hội thoại..."></textarea>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Ngày Kiểm Tra</label>
-                    <input type="date" id="checkDate" class="w-full p-2 border rounded-lg" required readonly>
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="closeModal()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">Hủy</button>
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Lưu</button>
-                </div>
-            </form>
-        </div>
+    <div class="filter-fail">
+      <button id="historyButton" onclick="showHistory()">Lịch sử kiểm tra</button>
+      <button id="failButton" onclick="showFailedQuestions()">Xem các câu Không Đạt</button>
     </div>
+    <div id="failList" class="fail-list"></div>
+  </div>
 
-    <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAfy4QMD9_7PyFHpInNdKDRWuW4AYCtLJ4",
-            authDomain: "history-e4633.firebaseapp.com",
-            projectId: "history-e4633",
-            storageBucket: "history-e4633.firebasestorage.app",
-            messagingSenderId: "331974436893",
-            appId: "1:331974436893:web:10c3c6adf7b66d2b5fbef4",
-            measurementId: "G-DC055090BW"
-        };
+  <script>
+    let sheetData = [];
+    let currentLesson = 'all';
+    let isChecking = false;
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    const questions = [
+  { lesson: 1, id: "1.1", text: "<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>は何ですか。" },
+  { lesson: 1, id: "1.2", text: "お<ruby>国<rt>くに</rt></ruby>はどちらですか。" },
+  { lesson: 1, id: "1.3", text: "<ruby>会社<rt>かいしゃ</rt></ruby>の<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>は何ですか。" },
+  { lesson: 1, id: "1.4", text: "<ruby>組合<rt>くみあい</rt></ruby>の<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>は何ですか。" },
+  { lesson: 1, id: "1.5", text: "あなたの<ruby>仕事<rt>しごと</rt></ruby>は何ですか。" },
+  { lesson: 1, id: "1.6", text: "あなたは<ruby>実習<rt>じっしゅう</rt></ruby><ruby>生<rt>せい</rt></ruby>ですか。" },
+  { lesson: 1, id: "1.7", text: "<ruby>今年<rt>ことし</rt></ruby>は<ruby>何歳<rt>なんさい</rt></ruby>ですか。" },
+  { lesson: 3, id: "3.1", text: "<ruby>出身<rt>しゅっしん</rt></ruby>はどこですか。" },
+  { lesson: 3, id: "3.2", text: "<ruby>寮<rt>りょう</rt></ruby>はどこですか。" },
+  { lesson: 3, id: "3.3", text: "トイレはどこですか。" },
+  { lesson: 3, id: "3.4", text: "<ruby>事務所<rt>じむしょ</rt></ruby>はどこですか。" },
+  { lesson: 3, id: "3.5", text: "<ruby>教室<rt>きょうしつ</rt></ruby>は<ruby>何階<rt>なんかい</rt></ruby>ですか。" },
+  { lesson: 3, id: "3.6", text: "あなたの<ruby>寮<rt>りょう</rt></ruby>は2<ruby>階<rt>かい</rt></ruby>ですか。" },
+  { lesson: 3, id: "3.7", text: "<ruby>会議<rt>かいぎ</rt></ruby><ruby>室<rt>しつ</rt></ruby>はどこですか。" },
+  { lesson: 4, id: "4.1", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>何時<rt>なんじ</rt></ruby>に<ruby>起<rt>お</rt></ruby>きますか。" },
+  { lesson: 4, id: "4.2", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>何時<rt>なんじ</rt></ruby>に<ruby>寝<rt>ね</rt></ruby>ますか。" },
+  { lesson: 4, id: "4.3", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>何時<rt>なんじ</rt></ruby>から<ruby>何時<rt>なんじ</rt></ruby>まで<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しますか。" },
+  { lesson: 4, id: "4.4", text: "<ruby>昼休<rt>ひるやす</rt></ruby>みは<ruby>何時<rt>なんじ</rt></ruby>から<ruby>何時<rt>なんじ</rt></ruby>までですか。" },
+  { lesson: 4, id: "4.5", text: "<ruby>今日<rt>きょう</rt></ruby>は<ruby>何月<rt>なんがつ</rt></ruby><ruby>何日<rt>なんにち</rt></ruby><ruby>何曜日<rt>なんようび</rt></ruby>ですか。" },
+  { lesson: 4, id: "4.6", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>、<ruby>勉強<rt>べんきょう</rt></ruby>しますか。" },
+  { lesson: 4, id: "4.7", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>勉強<rt>べんきょう</rt></ruby>しましたか。" },
+  { lesson: 5, id: "5.1", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>、どこへ<ruby>行<rt>い</rt></ruby>きますか。" },
+  { lesson: 5, id: "5.2", text: "いつ<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>きますか。" },
+  { lesson: 5, id: "5.3", text: "<ruby>誰<rt>だれ</rt></ruby>と<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>きますか。" },
+  { lesson: 5, id: "5.4", text: "いつ<ruby>家<rt>いえ</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>りますか。" },
+  { lesson: 5, id: "5.5", text: "<ruby>何<rt>なに</rt></ruby>で<ruby>家<rt>いえ</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>りますか。" },
+  { lesson: 5, id: "5.6", text: "<ruby>誕生日<rt>たんじょうび</rt></ruby>はいつですか。" },
+  { lesson: 5, id: "5.7", text: "<ruby>昨日<rt>きのう</rt></ruby>は<ruby>何曜日<rt>なんようび</rt></ruby>でしたか。" },
+  { lesson: 6, id: "6.1", text: "タバコを<ruby>吸<rt>す</rt></ruby>いますか。" },
+  { lesson: 6, id: "6.2", text: "ビールを<ruby>飲<rt>の</rt></ruby>みますか。" },
+  { lesson: 6, id: "6.3", text: "けさ、<ruby>何<rt>なに</rt></ruby>を<ruby>食<rt>た</rt></ruby>べましたか。" },
+  { lesson: 6, id: "6.4", text: "<ruby>今週末<rt>こんしゅうまつ</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしますか。" },
+  { lesson: 6, id: "6.5", text: "どこで<ruby>昼<rt>ひる</rt></ruby>ごはんを<ruby>食<rt>た</rt></ruby>べますか。" },
+  { lesson: 6, id: "6.6", text: "<ruby>夜<rt>よる</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしますか。" },
+  { lesson: 6, id: "6.7", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしましたか。" },
+  { lesson: 7, id: "7.1", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>宿題<rt>しゅくだい</rt></ruby>をしましたか。" },
+  { lesson: 7, id: "7.2", text: "もう<ruby>朝<rt>あさ</rt></ruby>ごはんを<ruby>食<rt>た</rt></ruby>べましたか。" },
+  { lesson: 7, id: "7.3", text: "<ruby>何<rt>なに</rt></ruby>で<ruby>朝<rt>あさ</rt></ruby>ごはんを<ruby>食<rt>た</rt></ruby>べましたか。" },
+  { lesson: 7, id: "7.4", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>家族<rt>かぞく</rt></ruby>に<ruby>電話<rt>でんわ</rt></ruby>をかけましたか。" },
+  { lesson: 7, id: "7.5", text: "<ruby>去年<rt>きょねん</rt></ruby>の<ruby>誕生日<rt>たんじょうび</rt></ruby>にプレゼントをもらいましたか。" },
+  { lesson: 7, id: "7.6", text: "<ruby>何<rt>なに</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>しますか。" },
+  { lesson: 7, id: "7.7", text: "<ruby>去年<rt>きょねん</rt></ruby>の<ruby>母<rt>はは</rt></ruby>の<ruby>誕生日<rt>たんじょうび</rt></ruby>に<ruby>何<rt>なに</rt></ruby>を<ruby>買<rt>か</rt></ruby>いましたか。" },
+  { lesson: 8, id: "8.1", text: "<ruby>日本語<rt>にほんご</rt></ruby>はどうですか。" },
+  { lesson: 8, id: "8.2", text: "<ruby>日本<rt>にほん</rt></ruby>はどんな<ruby>国<rt>くに</rt></ruby>ですか。" },
+  { lesson: 8, id: "8.3", text: "<ruby>田舎<rt>いなか</rt></ruby>はどちらですか。どんなところですか。" },
+  { lesson: 8, id: "8.4", text: "ホーチミン<ruby>市<rt>し</rt></ruby>はどんなまちですか。" },
+  { lesson: 8, id: "8.5", text: "<ruby>日本<rt>にほん</rt></ruby>の<ruby>食べ物<rt>たべもの</rt></ruby>はどうですか。" },
+  { lesson: 8, id: "8.6", text: "どんなスポーツが<ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 8, id: "8.7", text: "どんなベトナム<ruby>料理<rt>りょうり</rt></ruby>が<ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 9, id: "9.1", text: "<ruby>好<rt>す</rt></ruby><ruby>きな<rt>な</rt></ruby><ruby>歌<rt>うた</rt></ruby>は<ruby>何<rt>なに</rt></ruby>ですか。" },
+  { lesson: 9, id: "9.2", text: "どんな<ruby>飲み物<rt>のみもの</rt></ruby>が<ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 9, id: "9.3", text: "<ruby>好<rt>す</rt></ruby>きな<ruby>食べ物<rt>たべもの</rt></ruby>は<ruby>何<rt>なに</rt></ruby>ですか。<ruby>嫌<rt>きら</rt></ruby>いな<ruby>食べ物<rt>たべもの</rt></ruby>は<ruby>何<rt>なに</rt></ruby>ですか。" },
+  { lesson: 9, id: "9.4", text: "<ruby>英語<rt>えいご</rt></ruby>が<ruby>分<rt>わ</rt></ruby>かりますか。" },
+  { lesson: 9, id: "9.5", text: "<ruby>日本語<rt>にほんご</rt></ruby>が<ruby>分<rt>わ</rt></ruby>かりますか。" },
+  { lesson: 9, id: "9.6", text: "<ruby>料理<rt>りょうり</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>ですか。" },
+  { lesson: 9, id: "9.7", text: "<ruby>歌<rt>うた</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>ですか。" },
+  { lesson: 10, id: "10.1", text: "<ruby>今<rt>いま</rt></ruby>、どこにいますか。" },
+  { lesson: 10, id: "10.2", text: "<ruby>家<rt>うち</rt></ruby>に<ruby>犬<rt>いぬ</rt></ruby>がいますか。" },
+  { lesson: 10, id: "10.3", text: "<ruby>家<rt>うち</rt></ruby>の<ruby>近<rt>ちか</rt></ruby>くに<ruby>何<rt>なに</rt></ruby>がありますか。" },
+  { lesson: 10, id: "10.4", text: "<ruby>部屋<rt>へや</rt></ruby>に<ruby>時計<rt>とけい</rt></ruby>がありますか。" },
+  { lesson: 10, id: "10.5", text: "センターの<ruby>近<rt>ちか</rt></ruby>くに<ruby>何<rt>なに</rt></ruby>がありますか。" },
+  { lesson: 10, id: "10.6", text: "<ruby>教室<rt>きょうしつ</rt></ruby>に<ruby>今<rt>いま</rt></ruby><ruby>誰<rt>だれ</rt></ruby>がいますか。" },
+  { lesson: 10, id: "10.7", text: "<ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>がありますか。" },
+  { lesson: 11, id: "11.1", text: "<ruby>家<rt>うち</rt></ruby>にテレビが<ruby>何台<rt>なんだい</rt></ruby>ありますか。" },
+  { lesson: 11, id: "11.2", text: "<ruby>家<rt>うち</rt></ruby>にバイクが<ruby>何台<rt>なんだい</rt></ruby>ありますか。" },
+  { lesson: 11, id: "11.3", text: "<ruby>家族<rt>かぞく</rt></ruby>は<ruby>何人<rt>なんにん</rt></ruby>いますか。" },
+  { lesson: 11, id: "11.4", text: "センターから<ruby>田舎<rt>いなか</rt></ruby>までどのぐらいかかりますか。" },
+  { lesson: 11, id: "11.5", text: "<ruby>家<rt>うち</rt></ruby>に<ruby>部屋<rt>へや</rt></ruby>がいくつありますか。" },
+  { lesson: 11, id: "11.6", text: "センターに<ruby>日本人<rt>にほんじん</rt></ruby>の<ruby>教師<rt>きょうし</rt></ruby>がいますか。<ruby>何人<rt>なんにん</rt></ruby>いますか。" },
+  { lesson: 11, id: "11.7", text: "1ヶ<ruby>月<rt>げつ</rt></ruby>に<ruby>何回<rt>なんかい</rt></ruby><ruby>家<rt>いえ</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>りますか。" },
+  { lesson: 12, id: "12.1", text: "<ruby>昨日<rt>きのう</rt></ruby>の<ruby>天気<rt>てんき</rt></ruby>はどうでしたか。" },
+  { lesson: 12, id: "12.2", text: "<ruby>一年<rt>いちねん</rt></ruby>でいつが<ruby>一番<rt>いちばん</rt></ruby><ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 12, id: "12.3", text: "ベトナムでどこが<ruby>一番<rt>いちばん</rt></ruby><ruby>有名<rt>ゆうめい</rt></ruby>ですか。" },
+  { lesson: 12, id: "12.4", text: "ベトナム<ruby>料理<rt>りょうり</rt></ruby>で<ruby>何<rt>なに</rt></ruby>が<ruby>一番<rt>いちばん</rt></ruby><ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 12, id: "12.5", text: "<ruby>家族<rt>かぞく</rt></ruby>でだれが<ruby>一番<rt>いちばん</rt></ruby><ruby>歌<rt>うた</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>ですか。" },
+  { lesson: 12, id: "12.6", text: "お<ruby>父<rt>とう</rt></ruby>さんとお<ruby>母<rt>かあ</rt></ruby>さんとどちらが<ruby>料理<rt>りょうり</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>ですか。" },
+  { lesson: 12, id: "12.7", text: "<ruby>魚<rt>さかな</rt></ruby>と<ruby>肉<rt>にく</rt></ruby>とどちらが<ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 13, id: "13.1", text: "<ruby>週末<rt>しゅうまつ</rt></ruby><ruby>何<rt>なに</rt></ruby>をしたいですか。" },
+  { lesson: 13, id: "13.2", text: "どうして、<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>きたいですか。" },
+  { lesson: 13, id: "13.3", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>ってから、<ruby>何<rt>なに</rt></ruby>をしたいですか。" },
+  { lesson: 13, id: "13.4", text: "<ruby>今<rt>いま</rt></ruby>、<ruby>何<rt>なに</rt></ruby>がいちばんほしいですか。" },
+  { lesson: 13, id: "13.5", text: "<ruby>今<rt>いま</rt></ruby>、だれに<ruby>一番<rt>いちばん</rt></ruby><ruby>会<rt>あ</rt></ruby>いたいですか。" },
+  { lesson: 13, id: "13.6", text: "どんな<ruby>人<rt>ひと</rt></ruby>と<ruby>結婚<rt>けっこん</rt></ruby>したいですか。" },
+  { lesson: 13, id: "13.7", text: "<ruby>将来<rt>しょうらい</rt></ruby>、どこで<ruby>働<rt>はたら</rt></ruby>きたいですか。" },
+  { lesson: 14, id: "14.1", text: "<ruby>今<rt>いま</rt></ruby><ruby>雨<rt>あめ</rt></ruby>が<ruby>降<rt>ふ</rt></ruby>っていますか。" },
+  { lesson: 14, id: "14.2", text: "<ruby>今<rt>いま</rt></ruby><ruby>何<rt>なに</rt></ruby>をしていますか。" },
+  { lesson: 14, id: "14.3", text: "<ruby>会社<rt>かいしゃ</rt></ruby>と<ruby>組合<rt>くみあい</rt></ruby>の<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてください。" },
+  { lesson: 14, id: "14.4", text: "<ruby>生年月日<rt>せいねんがっぴ</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてください。" },
+  { lesson: 14, id: "14.5", text: "<ruby>電話番号<rt>でんわばんごう</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてください。" },
+  { lesson: 14, id: "14.6", text: "<ruby>会社<rt>かいしゃ</rt></ruby>と<ruby>組合<rt>くみあい</rt></ruby>の<ruby>住所<rt>じゅうしょ</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてください。" },
+  { lesson: 14, id: "14.7", text: "<ruby>今<rt>いま</rt></ruby><ruby>勉強<rt>べんきょう</rt></ruby>していますか。" },
+  { lesson: 15, id: "15.1", text: "<ruby>休<rt>やす</rt></ruby>みの<ruby>日<rt>ひ</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしていますか。" },
+  { lesson: 15, id: "15.2", text: "<ruby>今<rt>いま</rt></ruby>、どこに<ruby>住<rt>す</rt></ruby>んでいますか。" },
+  { lesson: 15, id: "15.3", text: "<ruby>結婚<rt>けっこん</rt></ruby>していますか。" },
+  { lesson: 15, id: "15.4", text: "<ruby>日本<rt>にほん</rt></ruby>で<ruby>一番<rt>いちばん</rt></ruby><ruby>高<rt>たか</rt></ruby>い<ruby>山<rt>やま</rt></ruby>を<ruby>知<rt>し</rt></ruby>っていますか。" },
+  { lesson: 15, id: "15.5", text: "<ruby>工場<rt>こうじょう</rt></ruby>で<ruby>何<rt>なに</rt></ruby>をしてはいけませんか。" },
+  { lesson: 15, id: "15.6", text: "<ruby>美術館<rt>びじゅつかん</rt></ruby>で<ruby>写真<rt>しゃしん</rt></ruby>を<ruby>撮<rt>と</rt></ruby>ってもいいですか。" },
+  { lesson: 15, id: "15.7", text: "ベトナムでどんな<ruby>日本<rt>にほん</rt></ruby>の<ruby>製品<rt>せいひん</rt></ruby>を<ruby>売<rt>う</rt></ruby>っていますか。" },
+  { lesson: 16, id: "16.1", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>ってから、<ruby>何<rt>なに</rt></ruby>をしたいですか。" },
+  { lesson: 16, id: "16.2", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>ってから、どこに<ruby>行<rt>い</rt></ruby>きたいですか。" },
+  { lesson: 16, id: "16.3", text: "<ruby>朝<rt>あさ</rt></ruby><ruby>起<rt>お</rt></ruby>きて、<ruby>何<rt>なに</rt></ruby>をしますか。" },
+  { lesson: 16, id: "16.4", text: "<ruby>昨日<rt>きのう</rt></ruby>の<ruby>晩<rt>ばん</rt></ruby>、ご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べてから<ruby>何<rt>なに</rt></ruby>をしましたか。" },
+  { lesson: 16, id: "16.5", text: "<ruby>日本<rt>にほん</rt></ruby>で3<ruby>年間<rt>ねんかん</rt></ruby><ruby>働<rt>はたら</rt></ruby>いて、<ruby>国<rt>くに</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>ってから、<ruby>何<rt>なに</rt></ruby>をしますか。" },
+  { lesson: 16, id: "16.6", text: "ベトナムの<ruby>料理<rt>りょうり</rt></ruby>はどうですか。（くて、で）。" },
+  { lesson: 16, id: "16.7", text: "お<ruby>母<rt>かあ</rt></ruby>さんは、どんな<ruby>人<rt>ひと</rt></ruby>ですか。（くて、で）。" },
+  { lesson: 17, id: "17.1", text: "<ruby>病気<rt>びょうき</rt></ruby>です。<ruby>何<rt>なに</rt></ruby>をしなければなりませんか。" },
+  { lesson: 17, id: "17.2", text: "<ruby>毎日<rt>まいにち</rt></ruby><ruby>宿題<rt>しゅくだい</rt></ruby>をしなければなりませんか。" },
+  { lesson: 17, id: "17.3", text: "ベトナムで<ruby>子供<rt>こども</rt></ruby>は<ruby>何歳<rt>なんさい</rt></ruby>から<ruby>学校<rt>がっこう</rt></ruby>へ<ruby>行<rt>い</rt></ruby>かなければなりませんか。" },
+  { lesson: 17, id: "17.4", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>話<rt>はな</rt></ruby>さなければなりませんか。" },
+  { lesson: 17, id: "17.5", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>何時<rt>なんじ</rt></ruby>に<ruby>起<rt>お</rt></ruby>きなければなりませんか。" },
+  { lesson: 17, id: "17.6", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>でも、<ruby>働<rt>はたら</rt></ruby>かなければなりませんか。" },
+  { lesson: 17, id: "17.7", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>きます。<ruby>何<rt>なに</rt></ruby>を<ruby>持<rt>も</rt></ruby>って<ruby>行<rt>い</rt></ruby>かなければなりませんか。" },
+  { lesson: 18, id: "18.1", text: "<ruby>泳<rt>およ</rt></ruby>ぐことができますか。<ruby>何<rt>なに</rt></ruby>メートルくらいできますか。" },
+  { lesson: 18, id: "18.2", text: "<ruby>趣味<rt>しゅみ</rt></ruby>は<ruby>何<rt>なに</rt></ruby>ですか。" },
+  { lesson: 18, id: "18.3", text: "<ruby>日本語<rt>にほんご</rt></ruby>で<ruby>歌<rt>うた</rt></ruby>を<ruby>歌<rt>うた</rt></ruby>うことができますか。" },
+  { lesson: 18, id: "18.4", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>寝<rt>ね</rt></ruby>る<ruby>前<rt>まえ</rt></ruby>に、<ruby>何<rt>なに</rt></ruby>をしましたか。" },
+  { lesson: 18, id: "18.5", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>く<ruby>前<rt>まえ</rt></ruby>、だれに<ruby>一番<rt>いちばん</rt></ruby><ruby>会<rt>あ</rt></ruby>いたいですか。" },
+  { lesson: 18, id: "18.6", text: "ご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べる<ruby>前<rt>まえ</rt></ruby>に<ruby>手<rt>て</rt></ruby>を<ruby>洗<rt>あら</rt></ruby>いますか。" },
+  { lesson: 18, id: "18.7", text: "<ruby>漢字<rt>かんじ</rt></ruby>を<ruby>読<rt>よ</rt></ruby>むことができますか。いくつぐらい<ruby>読<rt>よ</rt></ruby>むことができますか。" },
+  { lesson: 19, id: "19.1", text: "<ruby>日本<rt>にほん</rt></ruby>で<ruby>何<rt>なに</rt></ruby>をしたいですか。（～たり～たり）。" },
+  { lesson: 19, id: "19.2", text: "<ruby>日本<rt>にほん</rt></ruby><ruby>料理<rt>りょうり</rt></ruby>を<ruby>食<rt>た</rt></ruby>べたことがありますか。どこで<ruby>食<rt>た</rt></ruby>べましたか。" },
+  { lesson: 19, id: "19.3", text: "ダイエットしたことがありますか。" },
+  { lesson: 19, id: "19.4", text: "<ruby>次<rt>つぎ</rt></ruby>の<ruby>誕生日<rt>たんじょうび</rt></ruby>に、<ruby>何歳<rt>なんさい</rt></ruby>になりますか。" },
+  { lesson: 19, id: "19.5", text: "ベトナムのどこへ<ruby>旅行<rt>りょこう</rt></ruby>に<ruby>行<rt>い</rt></ruby>ったことがありますか。どんな<ruby>所<rt>ところ</rt></ruby>でしたか。" },
+  { lesson: 19, id: "19.6", text: "<ruby>日本語<rt>にほんご</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>になりましたか。" },
+  { lesson: 19, id: "19.7", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしますか。（～たり～たり）。" },
+  { lesson: 20, id: "20.1", text: "<ruby>果物<rt>くだもの</rt></ruby>で<ruby>何<rt>なに</rt></ruby>が<ruby>一番<rt>いちばん</rt></ruby><ruby>好<rt>す</rt></ruby>き？" },
+  { lesson: 20, id: "20.2", text: "<ruby>漢字<rt>かんじ</rt></ruby>がいくつ<ruby>分<rt>わ</rt></ruby>かる？" },
+  { lesson: 20, id: "20.3", text: "ベトナムと<ruby>日本<rt>にほん</rt></ruby>とどっちが<ruby>人<rt>ひと</rt></ruby>が<ruby>多<rt>おお</rt></ruby>い？" },
+  { lesson: 20, id: "20.4", text: "<ruby>日本<rt>にほん</rt></ruby>の<ruby>映画<rt>えいが</rt></ruby>を<ruby>見<rt>み</rt></ruby>たことがある？" },
+  { lesson: 20, id: "20.5", text: "<ruby>仕事<rt>しごと</rt></ruby>は<ruby>何<rt>なに</rt></ruby>？" },
+  { lesson: 20, id: "20.6", text: "<ruby>車<rt>くるま</rt></ruby>を<ruby>運転<rt>うんてん</rt></ruby>することができますか？" },
+  { lesson: 20, id: "20.7", text: "<ruby>今<rt>いま</rt></ruby>、<ruby>誰 and<rt>だれ</rt></ruby>と<ruby>住<rt>す</rt></ruby>んでる？" },
+  { lesson: 21, id: "21.1", text: "<ruby>日本人<rt>にほんじん</rt></ruby>はご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べる<ruby>前<rt>まえ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.2", text: "<ruby>日本人<rt>にほんじん</rt></ruby>は<ruby>仕事<rt>しごと</rt></ruby>が<ruby>終<rt>お</rt></ruby>わって、<ruby>家<rt>うち</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>る<ruby>前<rt>まえ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.3", text: "<ruby>日本語<rt>にほんご</rt></ruby>について、どう<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.4", text: "<ruby>仕事<rt>しごと</rt></ruby>と<ruby>家族<rt>かぞく</rt></ruby>とどちらが<ruby>大切<rt>たいせつ</rt></ruby>だと<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.5", text: "<ruby>友達<rt>ともだち</rt></ruby>が<ruby>病気<rt>びょうき</rt></ruby>です。<ruby>友達<rt>ともだち</rt></ruby>に<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.6", text: "<ruby>明日<rt>あした</rt></ruby>は<ruby>天気<rt>てんき</rt></ruby>がいいと<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 21, id: "21.7", text: "<ruby>日本<rt>にほん</rt></ruby>について、どう<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 22, id: "22.1", text: "<ruby>今<rt>いま</rt></ruby>、<ruby>一番<rt>いちばん</rt></ruby><ruby>欲<rt>ほ</rt></ruby>しいものは<ruby>何<rt>なに</rt></ruby>ですか。" },
+  { lesson: 22, id: "22.2", text: "<ruby>最近<rt>さいきん</rt></ruby>、<ruby>楽<rt>たの</rt></ruby>しかったことはありませんか。" },
+  { lesson: 22, id: "22.3", text: "あなたが<ruby>生<rt>う</rt></ruby>まれたところはどこですか。" },
+  { lesson: 22, id: "22.4", text: "<ruby>初<rt>はじ</rt></ruby>めて<ruby>習<rt>なら</rt></ruby>った<ruby>外国語<rt>がいこくご</rt></ruby>は<ruby>何<rt>なに</rt></ruby>ですか。" },
+  { lesson: 22, id: "22.5", text: "<ruby>知<rt>し</rt></ruby>っている<ruby>野菜<rt>やさい</rt></ruby>の<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてください。" },
+  { lesson: 22, id: "22.6", text: "お<ruby>母<rt>かあ</rt></ruby>さんが<ruby>作<rt>つく</rt></ruby>った<ruby>料理<rt>りょうり</rt></ruby>が<ruby>好<rt>す</rt></ruby>きですか。" },
+  { lesson: 22, id: "22.7", text: "<ruby>将来<rt>しょうらい</rt></ruby>、<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>使<rt>つか</rt></ruby>う<ruby>仕事<rt>しごと</rt></ruby>がしたいですか。" },
+  { lesson: 23, id: "23.1", text: "<ruby>子供<rt>こども</rt></ruby>の<ruby>時<rt>とき</rt></ruby>どこに<ruby>住<rt>す</rt></ruby>んでいましたか。" },
+  { lesson: 23, id: "23.2", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>って、<ruby>道<rt>みち</rt></ruby>が<ruby>分<rt>わ</rt></ruby>からない<ruby>時<rt>とき</rt></ruby>どうしますか。" },
+  { lesson: 23, id: "23.3", text: "<ruby>疲<rt>つか</rt></ruby>れた<ruby>時<rt>とき</rt></ruby>、どうしますか。" },
+  { lesson: 23, id: "23.4", text: "<ruby>寂<rt>さび</rt></ruby>しい<ruby>時<rt>とき</rt></ruby>、どうしますか。" },
+  { lesson: 23, id: "23.5", text: "よく<ruby>聞<rt>き</rt></ruby>こえない<ruby>時<rt>とき</rt></ruby>、<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>いますか。" },
+  { lesson: 23, id: "23.6", text: "<ruby>日本<rt>にほん</rt></ruby>で<ruby>冬<rt>ふゆ</rt></ruby>になるとどうなりますか。" },
+  { lesson: 23, id: "23.7", text: "たくさんお<ruby>酒<rt>さけ</rt></ruby>を<ruby>飲<rt>の</rt></ruby>むとどうなりますか。" },
+  { lesson: 24, id: "24.1", text: "お<ruby>母<rt>かあ</rt></ruby>さんの<ruby>誕生日<rt>たんじょうび</rt></ruby>に<ruby>何<rt>なに</rt></ruby>をしてあげたいですか。" },
+  { lesson: 24, id: "24.2", text: "<ruby>子供<rt>こども</rt></ruby>の<ruby>時<rt>とき</rt></ruby>、<ruby>誕生日<rt>たんじょうび</rt></ruby>に<ruby>何<rt>なに</rt></ruby>を<ruby>買<rt>か</rt></ruby>ってもらいましたか。" },
+  { lesson: 24, id: "24.3", text: "<ruby>外国人<rt>がいこくじん</rt></ruby>の<ruby>友達<rt>ともだち</rt></ruby>が<ruby>来<rt>き</rt></ruby>た<ruby>時<rt>とき</rt></ruby>、ベトナムのどこを<ruby>案内<rt>あんない</rt></ruby>してあげたいですか。" },
+  { lesson: 24, id: "24.4", text: "あなたが<ruby>病気<rt>びょうき</rt></ruby>になった<ruby>時<rt>とき</rt></ruby>に、<ruby>友達<rt>ともだち</rt></ruby>が<ruby>何<rt>なに</rt></ruby>をしてくれましたか。" },
+  { lesson: 24, id: "24.5", text: "センターで<ruby>勉強<rt>べんきょう</rt></ruby>する<ruby>時<rt>とき</rt></ruby>、<ruby>先生<rt>せんせい</rt></ruby>に<ruby>何<rt>なに</rt></ruby>をしてもらいましたか。" },
+  { lesson: 24, id: "24.6", text: "<ruby>去年<rt>きょねん</rt></ruby>の<ruby>誕生日<rt>たんじょうび</rt></ruby>にプレゼントを<ruby>買<rt>か</rt></ruby>ってもらいましたか。" },
+  { lesson: 24, id: "24.7", text: "<ruby>誰<rt>だれ</rt></ruby>が<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えてくれましたか。" },
+  { lesson: 25, id: "25.1", text: "もしお<ruby>金<rt>かね</rt></ruby>がたくさんあったら、<ruby>何<rt>なに</rt></ruby>をしたいですか。" },
+  { lesson: 25, id: "25.2", text: "<ruby>体<rt>からだ</rt></ruby>の<ruby>調子<rt>ちょうし</rt></ruby>が<ruby>悪<rt>わる</rt></ruby>かったら、どうしますか。" },
+  { lesson: 25, id: "25.3", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>でも<ruby>勉強<rt>べんきょう</rt></ruby>したり<ruby>働<rt>はたら</rt></ruby>いたりしますか。" },
+  { lesson: 25, id: "25.4", text: "<ruby>会社<rt>かいしゃ</rt></ruby>で<ruby>仕事<rt>しごと</rt></ruby>が<ruby>分<rt>わ</rt></ruby>からなかったら、どうしますか。" },
+  { lesson: 25, id: "25.5", text: "<ruby>恋人<rt>こいびと</rt></ruby>はお<ruby>金<rt>かね</rt></ruby>がなくても、<ruby>結婚<rt>けっこん</rt></ruby>しますか。" },
+  { lesson: 25, id: "25.6", text: "<ruby>年<rt>とし</rt></ruby>をとっても、<ruby>働<rt>はたら</rt></ruby>きたいですか。" },
+  { lesson: 25, id: "25.7", text: "<ruby>日曜<rt>にちよう</rt></ruby><ruby>日<rt>び</rt></ruby>、いい<ruby>天気<rt>てんき</rt></ruby>だったら、どこへ<ruby>遊<rt>あそ</rt></ruby>びに<ruby>行<rt>い</rt></ruby>きたいですか。" },
+  { lesson: 26, id: "26.1", text: "<ruby>昨日<rt>きのう</rt></ruby>、<ruby>家<rt>うち</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>るときに、<ruby>財布<rt>さいふ</rt></ruby>を<ruby>拾<rt>ひろ</rt></ruby>ったんですが、どうしたらいいですか。" },
+  { lesson: 26, id: "26.2", text: "ベトナム<ruby>人<rt>じん</rt></ruby>の<ruby>家<rt>いえ</rt></ruby>に<ruby>行<rt>い</rt></ruby>くんですが、どんなお<ruby>土産<rt>みやげ</rt></ruby>を<ruby>持<rt>も</rt></ruby>って<ruby>行<rt>い</rt></ruby>ったらいいですか。" },
+  { lesson: 26, id: "26.3", text: "<ruby>仕事<rt>しごと</rt></ruby>が<ruby>分<rt>わ</rt></ruby>からない<ruby>時<rt>とき</rt></ruby>、<ruby>先輩<rt>せんぱい</rt></ruby>に<ruby>教<rt>おし</rt></ruby>えて<ruby>欲<rt>ほ</rt></ruby>しいんですが、<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>いますか。" },
+  { lesson: 26, id: "26.4", text: "ベトナムを<ruby>旅行<rt>りょこう</rt></ruby>したいんですが、<ruby>何月<rt>なんがつ</rt></ruby>がいいですか。" },
+  { lesson: 26, id: "26.5", text: "<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>したいんですが、どこかいいところを<ruby>紹介<rt>しょうかい</rt></ruby>して<ruby>頂<rt>いただ</rt></ruby>けませんか。" },
+  { lesson: 26, id: "26.6", text: "<ruby>京都<rt>きょうと</rt></ruby>へ<ruby>行<rt>い</rt></ruby>きたいんですが、<ruby>道<rt>みち</rt></ruby>を<ruby>教<rt>おし</rt></ruby>えて<ruby>頂<rt>いただ</rt></ruby>けませんか。" },
+  { lesson: 26, id: "26.7", text: "<ruby>朝<rt>あさ</rt></ruby>からミラーさんがいません。彼は<ruby>今日<rt>きょう</rt></ruby><ruby>休<rt>やす</rt></ruby>んだんですか。" },
+  { lesson: 27, id: "27.1", text: "<ruby>人<rt>ひと</rt></ruby>に<ruby>初<rt>はじ</rt></ruby>めて<ruby>会<rt>あ</rt></ruby>った<ruby>時<rt>とき</rt></ruby>、すぐ<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>が<ruby>覚<rt>おぼ</rt></ruby>えられますか。" },
+  { lesson: 27, id: "27.2", text: "<ruby>海<rt>うみ</rt></ruby>に<ruby>住<rt>す</rt></ruby>んだら、<ruby>何<rt>なに</rt></ruby>が<ruby>聞<rt>き</rt></ruby>こえますか。" },
+  { lesson: 27, id: "27.3", text: "<ruby>自分<rt>じぶん</rt></ruby>で<ruby>料理<rt>りょうり</rt></ruby>が<ruby>作<rt>つく</rt></ruby>れますか。どんな<ruby>料理<rt>りょうり</rt></ruby>が<ruby>作<rt>つく</rt></ruby>れますか。" },
+  { lesson: 27, id: "27.4", text: "<ruby>寮<rt>りょう</rt></ruby>の<ruby>部屋<rt>へや</rt></ruby>から<ruby>何<rt>なに</rt></ruby>が<ruby>見<rt>み</rt></ruby>えますか。" },
+  { lesson: 27, id: "27.5", text: "あなたが<ruby>住<rt>す</rt></ruby>むところから<ruby>富士山<rt>ふじさん</rt></ruby>が<ruby>見<rt>み</rt></ruby>えますか。" },
+  { lesson: 27, id: "27.6", text: "<ruby>日本語<rt>にほんご</rt></ruby>の<ruby>新聞<rt>しんぶん</rt></ruby>が<ruby>読<rt>よ</rt></ruby>めますか。" },
+  { lesson: 27, id: "27.7", text: "あなたは<ruby>泳<rt>およ</rt></ruby>げますか。<ruby>何<rt>なに</rt></ruby>メートルぐらい<ruby>泳<rt>およ</rt></ruby>げますか。" },
+  { lesson: 28, id: "28.1", text: "<ruby>暇<rt>ひま</rt></ruby>な<ruby>時<rt>とき</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしていますか。" },
+  { lesson: 28, id: "28.2", text: "<ruby>高校生<rt>こうこうせい</rt></ruby>の<ruby>時<rt>とき</rt></ruby>、<ruby>毎日<rt>まいにち</rt></ruby><ruby>学校<rt>がっこう</rt></ruby>が<ruby>終<rt>お</rt></ruby>わってから、よく<ruby>何<rt>なに</rt></ruby>をしていましたか。" },
+  { lesson: 28, id: "28.3", text: "<ruby>日本<rt>にほん</rt></ruby>で<ruby>日本語<rt>にほんご</rt></ruby>の<ruby>勉強<rt>べんきょう</rt></ruby>を<ruby>続<rt>つづ</rt></ruby>けながら<ruby>仕事<rt>しごと</rt></ruby>をしますか。" },
+  { lesson: 28, id: "28.4", text: "<ruby>教室<rt>きょうしつ</rt></ruby>で<ruby>食<rt>た</rt></ruby>べながら、<ruby>勉強<rt>べんきょう</rt></ruby>してもいいですか。" },
+  { lesson: 28, id: "28.5", text: "<ruby>日本語<rt>にほんご</rt></ruby>はどう<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 28, id: "28.6", text: "どうして<ruby>日本語<rt>にほんご</rt></ruby>を<ruby>勉強<rt>べんきょう</rt></ruby>していますか。" },
+  { lesson: 28, id: "28.7", text: "あなたの<ruby>仕事<rt>しごと</rt></ruby>についてどう<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 29, id: "29.1", text: "<ruby>今<rt>いま</rt></ruby><ruby>電気<rt>でんき</rt></ruby>がついていますか。" },
+  { lesson: 29, id: "29.2", text: "<ruby>今<rt>いま</rt></ruby><ruby>教室<rt>きょうしつ</rt></ruby>の<ruby>窓<rt>まど</rt></ruby>が<ruby>閉<rt>し</rt></ruby>まっていますか。<ruby>開<rt>あ</rt></ruby>いていますか。" },
+  { lesson: 29, id: "29.3", text: "<ruby>今<rt>いま</rt></ruby><ruby>部屋<rt>へや</rt></ruby>の<ruby>扇風機<rt>せんぷうき</rt></ruby>はどうなっていますか。" },
+  { lesson: 29, id: "29.4", text: "もう<ruby>宿題<rt>しゅくだい</rt></ruby>をしてしまいましたか。" },
+  { lesson: 29, id: "29.5", text: "<ruby>今<rt>いま</rt></ruby>まで<ruby>友達<rt>ともだち</rt></ruby>と<ruby>喧嘩<rt>けんか</rt></ruby>してしまったことがありますか。" },
+  { lesson: 29, id: "29.6", text: "<ruby>今<rt>いま</rt></ruby>までお<ruby>金<rt>かね</rt></ruby>を<ruby>落<rt>お</rt></ruby>としてしまったことがありますか。" },
+  { lesson: 30, id: "30.1", text: "<ruby>教室<rt>きょうしつ</rt></ruby>の<ruby>壁<rt>かべ</rt></ruby>にカレンダーが<ruby>掛<rt>か</rt></ruby>けてありますか。" },
+  { lesson: 30, id: "30.2", text: "<ruby>教室<rt>きょうしつ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>が<ruby>置<rt>お</rt></ruby>いてありますか。" },
+  { lesson: 30, id: "30.3", text: "<ruby>部屋<rt>へや</rt></ruby>に<ruby>何<rt>なに</rt></ruby>が<ruby>貼<rt>は</rt></ruby>ってありますか。" },
+  { lesson: 30, id: "30.4", text: "<ruby>授業<rt>じゅぎょう</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>に、<ruby>何<rt>なに</rt></ruby>をしておきますか。" },
+  { lesson: 30, id: "30.5", text: "<ruby>授業<rt>じゅぎょう</rt></ruby>が<ruby>終<rt>お</rt></ruby>わった<ruby>後<rt>あと</rt></ruby>で、<ruby>何<rt>なに</rt></ruby>をしておきますか。" },
+  { lesson: 30, id: "30.6", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>く<ruby>前<rt>まえ</rt></ruby>に、<ruby>何<rt>なに</rt></ruby>を<ruby>準備<rt>じゅんび</rt></ruby>しておいたらいいですか。" },
+  { lesson: 30, id: "30.7", text: "パーティーの<ruby>前<rt>まえ</rt></ruby>に、<ruby>何<rt>なに</rt></ruby>を<ruby>準備<rt>じゅんび</rt></ruby>しておきますか。" },
+  { lesson: 31, id: "31.1", text: "<ruby>今夜<rt>こんや</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしようと<ruby>思<rt>おも</rt></ruby>っていますか。" },
+  { lesson: 31, id: "31.2", text: "<ruby>休<rt>やす</rt></ruby>みの<ruby>日<rt>ひ</rt></ruby>はどこへ<ruby>行<rt>い</rt></ruby>こうと<ruby>思<rt>おも</rt></ruby>っていますか。" },
+  { lesson: 31, id: "31.3", text: "<ruby>日本<rt>にほん</rt></ruby>へ<ruby>行<rt>い</rt></ruby>ってから、<ruby>日本語<rt>にほんご</rt></ruby>の<ruby>勉強<rt>べんきょう</rt></ruby>を<ruby>続<rt>つづ</rt></ruby>けるつもりですか。" },
+  { lesson: 31, id: "31.4", text: "<ruby>実習<rt>じっしゅう</rt></ruby>が<ruby>終<rt>お</rt></ruby>わって、<ruby>国<rt>くに</rt></ruby>へ<ruby>帰<rt>かえ</rt></ruby>ったら、どんな<ruby>仕事<rt>しごと</rt></ruby>をするつもりですか。" },
+  { lesson: 31, id: "31.5", text: "N4という<ruby>試験<rt>しけん</rt></ruby>の<ruby>予定<rt>よてい</rt></ruby>はいつですか。" },
+  { lesson: 31, id: "31.6", text: "<ruby>今週末<rt>こんしゅうまつ</rt></ruby>、<ruby>何<rt>なに</rt></ruby>か<ruby>予定<rt>よてい</rt></ruby>がありますか。" },
+  { lesson: 31, id: "31.7", text: "N4の<ruby>漢字<rt>かんじ</rt></ruby>を<ruby>全部<rt>ぜんぶ</rt></ruby><ruby>覚<rt>おぼ</rt></ruby>えていますか。" },
+  { lesson: 32, id: "32.1", text: "<ruby>風邪<rt>かぜ</rt></ruby>をひいた<ruby>時<rt>とき</rt></ruby>、<ruby>何<rt>なに</rt></ruby>をしたほうがいいですか。" },
+  { lesson: 32, id: "32.2", text: "<ruby>最近<rt>さいきん</rt></ruby>、<ruby>夜<rt>よる</rt></ruby><ruby>寝<rt>ね</rt></ruby>られないんですが、<ruby>薬<rt>くすり</rt></ruby>を<ruby>飲<rt>の</rt></ruby>んだ<ruby>方<rt>ほう</rt></ruby>がいいと<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 32, id: "32.3", text: "<ruby>旅行<rt>りょこう</rt></ruby>の<ruby>時<rt>とき</rt></ruby>、<ruby>現金<rt>げんきん</rt></ruby>を<ruby>持<rt>も</rt></ruby>った<ruby>方<rt>ほう</rt></ruby>がいいと<ruby>思<rt>おも</rt></ruby>いますか。カードを<ruby>持<rt>も</rt></ruby>った<ruby>方<rt>ほう</rt></ruby>がいいと<ruby>思<rt>おも</rt></ruby>いますか。" },
+  { lesson: 32, id: "32.4", text: "テストの<ruby>前<rt>まえ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>をしない<ruby>方<rt>ほう</rt></ruby>がいいですか。" },
+  { lesson: 32, id: "32.5", text: "<ruby>明日<rt>あした</rt></ruby>はいい<ruby>天気<rt>てんき</rt></ruby>でしょうか。" },
+  { lesson: 32, id: "32.6", text: "N4という<ruby>試験<rt>しけん</rt></ruby>は<ruby>難<rt>むずか</rt></ruby>しいでしょうか。" },
+  { lesson: 32, id: "32.7", text: "<ruby>雨<rt>あめ</rt></ruby>が<ruby>降<rt>ふ</rt></ruby>るかもしれません。<ruby>傘<rt>かさ</rt></ruby>を<ruby>持<rt>も</rt></ruby>って<ruby>行<rt>い</rt></ruby>った<ruby>方<rt>ほう</rt></ruby>がいいですか。" },
+  { lesson: 33, id: "33.1", text: "「<ruby>立<rt>た</rt></ruby>ち<ruby>入<rt>い</rt></ruby>り<ruby>禁止<rt>きんし</rt></ruby>」はどういう<ruby>意味<rt>いみ</rt></ruby>ですか。" },
+  { lesson: 33, id: "33.2", text: "「<ruby>故障<rt>こしょう</rt></ruby>」はどういう<ruby>意味<rt>いみ</rt></ruby>ですか。" },
+  { lesson: 33, id: "33.3", text: "「<ruby>使用<rt>しよう</rt></ruby><ruby>禁止<rt>きんし</rt></ruby>」はどういう<ruby>意味<rt>いみ</rt></ruby>ですか。" },
+  { lesson: 33, id: "33.4", text: "「<ruby>無料<rt>むりょう</rt></ruby>」はどういう<ruby>意味<rt>いみ</rt></ruby>ですか。" },
+  { lesson: 33, id: "33.5", text: "<ruby>日本人<rt>にほんじん</rt></ruby>はスポーツの<ruby>試合<rt>しあい</rt></ruby>で「<ruby>頑張<rt>がんば</rt></ruby>れ」という<ruby>言葉<rt>ことば</rt></ruby>を<ruby>使<rt>つか</rt></ruby>います。あなたの<ruby>国<rt>くに</rt></ruby>でどんな<ruby>言葉<rt>ことば</rt></ruby>を<ruby>使<rt>つか</rt></ruby>いますか。" },
+  { lesson: 33, id: "33.6", text: "<ruby>部長<rt>ぶちょう</rt></ruby>に「<ruby>明日<rt>あした</rt></ruby>は<ruby>休<rt>やす</rt></ruby>み」と<ruby>伝<rt>つた</rt></ruby>えていただけませんか。" },
+  { lesson: 33, id: "33.7", text: "<ruby>先生<rt>せんせい</rt></ruby>は<ruby>授業<rt>じゅぎょう</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>に<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>っていましたか。" },
+  { lesson: 34, id: "34.1", text: "<ruby>毎日<rt>まいにち</rt></ruby>、<ruby>授業<rt>じゅぎょう</rt></ruby>が<ruby>終<rt>お</rt></ruby>わった<ruby>後<rt>あと</rt></ruby>で、<ruby>何<rt>なに</rt></ruby>をしていますか。" },
+  { lesson: 34, id: "34.2", text: "<ruby>毎日<rt>まいにち</rt></ruby>、シャワーを<ruby>浴<rt>あ</rt></ruby>びた<ruby>後<rt>あと</rt></ruby>で、<ruby>何<rt>なに</rt></ruby>をしていますか。" },
+  { lesson: 34, id: "34.3", text: "<ruby>料理<rt>りょうり</rt></ruby>の<ruby>本<rt>ほん</rt></ruby>のとおりに<ruby>料理<rt>りょうり</rt></ruby>を<ruby>作<rt>つく</rt></ruby>ったことがありますか。" },
+  { lesson: 34, id: "34.4", text: "<ruby>夜<rt>よる</rt></ruby>、<ruby>寝<rt>ね</rt></ruby>ないで、<ruby>勉強<rt>べんきょう</rt></ruby>したことがありますか。" },
+  { lesson: 34, id: "34.5", text: "シャワーを<ruby>浴<rt>あ</rt></ruby>びないで、<ruby>寝<rt>ね</rt></ruby>たことがありますか。" },
+  { lesson: 34, id: "34.6", text: "<ruby>朝<rt>あさ</rt></ruby>ご<ruby>飯<rt>はん</rt></ruby>を<ruby>食<rt>た</rt></ruby>べないで、<ruby>学校<rt>がっこう</rt></ruby>へ<ruby>行<rt>い</rt></ruby>ったことがありますか。" },
+  { lesson: 34, id: "34.7", text: "あなたの<ruby>国<rt>くに</rt></ruby>では、お<ruby>葬式<rt>そうしき</rt></ruby>にどんな<ruby>服<rt>ふく</rt></ruby>を<ruby>着<rt>き</rt></ruby>ていきますか。" },
+  { lesson: 35, id: "35.1", text: "たくさんお<ruby>金<rt>かね</rt></ruby>があれば、<ruby>何<rt>なに</rt></ruby>をしたいですか。" },
+  { lesson: 35, id: "35.2", text: "<ruby>毎日<rt>まいにち</rt></ruby><ruby>運動<rt>うんどう</rt></ruby>すれば、どうなりますか。" },
+  { lesson: 35, id: "35.3", text: "<ruby>宿題<rt>しゅくだい</rt></ruby>をしなければ、<ruby>先生<rt>せんせい</rt></ruby>に<ruby>何<rt>なに</rt></ruby>と<ruby>言<rt>い</rt></ruby>ったらいいですか。" },
+  { lesson: 35, id: "35.4", text: "<ruby>天気<rt>てんき</rt></ruby>がよければ、どこに<ruby>行<rt>い</rt></ruby>きたいですか。" },
+  { lesson: 35, id: "35.5", text: "<ruby>日本語<rt>にほんご</rt></ruby>が<ruby>上手<rt>じょうず</rt></ruby>になりたいんですが、どうすればいいですか。" },
+  { lesson: 35, id: "35.6", text: "<ruby>病気<rt>びょうき</rt></ruby>の<ruby>時<rt>とき</rt></ruby>は<ruby>何<rt>なに</rt></ruby>を<ruby>食<rt>た</rt></ruby>べればいいですか。" },
+  { lesson: 35, id: "35.7", text: "<ruby>道<rt>みち</rt></ruby>が<ruby>分<rt>わ</rt></ruby>からない<ruby>時<rt>とき</rt></ruby>、どうすればいいですか。" }
+];
 
-        let editingRow = null;
-        let sheetData = [];
+    const lessons = [...new Set(questions.map(q => q.lesson))].sort((a, b) => a - b);
 
-        // Function to capitalize first letter of each word
-        function capitalizeFirstLetter(text) {
-            if (!text) return text;
-            return text
-                .split(' ')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join(' ');
-        }
+    async function fetchSheetData() {
+      const loading = document.getElementById('loading');
+      loading.style.display = 'block';
+      try {
+        const response = await fetch('https://sheetdb.io/api/v1/nowbvmpq7ee5q');
+        if (!response.ok) throw new Error('Lỗi tải dữ liệu');
+        const rawData = await response.json();
 
-        // Function to convert to uppercase
-        function toUpperCase(text) {
-            if (!text) return text;
-            return text.toUpperCase();
-        }
-
-        // Show/Hide Loading Spinner
-        function showLoading() {
-            document.getElementById('loading').classList.remove('hidden');
-        }
-        function hideLoading() {
-            document.getElementById('loading').classList.add('hidden');
-        }
-
-        // Fetch data from SheetDB
-        async function fetchSheetData() {
-            showLoading();
-            try {
-                const response = await fetch('https://sheetdb.io/api/v1/nowbvmpq7ee5q');
-                sheetData = await response.json();
-                sheetData = sheetData
-                    .filter(item => item['Lớp'] && item['Lớp'].trim())
-                    .map(item => ({
-                        ...item,
-                        'Nghiệp Đoàn': (item['Nghiệp Đoàn'] || '').trim().toUpperCase(),
-                        'Công Ty': (item['Công Ty'] || '').trim().toUpperCase(),
-                        'Lớp': item['Lớp'].trim().toUpperCase(),
-                        'Phụ Trách': (item['Phụ Trách'] || '').trim().toUpperCase()
-                    }));
-                console.log('Normalized SheetDB data:', sheetData);
-                populateClassDropdown();
-            } catch (error) {
-                console.error('Error fetching SheetDB data:', error);
-                alert('Không thể tải dữ liệu từ SheetDB: ' + error.message);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Populate Class dropdown
-        function populateClassDropdown() {
-            const classSelect = document.getElementById('class');
-            const uniqueClasses = [...new Set(sheetData.map(item => item['Lớp']))];
-            classSelect.innerHTML = '<option value="">Chọn Lớp</option>';
-            uniqueClasses.forEach(cls => {
-                const option = document.createElement('option');
-                option.value = cls;
-                option.textContent = cls;
-                classSelect.appendChild(option);
-            });
-        }
-
-        // Populate Person in Charge dropdown based on selected Class
-        function populatePersonInChargeDropdown(selectedClass) {
-            const personInChargeSelect = document.getElementById('personInCharge');
-            personInChargeSelect.innerHTML = '<option value="">Chọn Phụ Trách</option>';
-            if (selectedClass) {
-                const filteredData = sheetData.filter(item => item['Lớp'] === selectedClass);
-                const uniquePersons = [...new Set(filteredData.map(item => item['Phụ Trách']).filter(person => person))];
-                uniquePersons.forEach(person => {
-                    const option = document.createElement('option');
-                    option.value = person;
-                    option.textContent = person;
-                    personInChargeSelect.appendChild(option);
-                });
-            }
-        }
-
-        // Populate Union dropdown based on selected Class and Person in Charge
-        function populateUnionDropdown(selectedClass, selectedPersonInCharge) {
-            const unionSelect = document.getElementById('union');
-            unionSelect.innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>';
-            if (selectedClass && selectedPersonInCharge) {
-                const filteredData = sheetData.filter(item =>
-                    item['Lớp'] === selectedClass && item['Phụ Trách'] === selectedPersonInCharge
-                );
-                const uniqueUnions = [...new Set(filteredData.map(item => item['Nghiệp Đoàn']).filter(union => union.trim()))];
-                if (uniqueUnions.length > 0) {
-                    uniqueUnions.forEach(union => {
-                        const option = document.createElement('option');
-                        option.value = union;
-                        option.textContent = union;
-                        unionSelect.appendChild(option);
-                    });
-                    unionSelect.disabled = false;
-                } else {
-                    unionSelect.disabled = true;
-                }
-            } else {
-                unionSelect.disabled = true;
-            }
-        }
-
-        // Populate Company dropdown based on selected Class, Person in Charge, and Union
-        function populateCompanyDropdown(selectedClass, selectedPersonInCharge, selectedUnion) {
-            const companySelect = document.getElementById('company');
-            companySelect.innerHTML = '<option value="">Chọn Công Ty</option>';
-            if (selectedClass && selectedPersonInCharge && selectedUnion) {
-                const filteredData = sheetData.filter(item =>
-                    item['Lớp'] === selectedClass &&
-                    item['Phụ Trách'] === selectedPersonInCharge &&
-                    item['Nghiệp Đoàn'] === selectedUnion
-                );
-                const uniqueCompanies = [...new Set(filteredData.map(item => item['Công Ty']).filter(company => company.trim()))];
-                if (uniqueCompanies.length > 0) {
-                    uniqueCompanies.forEach(company => {
-                        const option = document.createElement('option');
-                        option.value = company;
-                        option.textContent = company;
-                        companySelect.appendChild(option);
-                    });
-                    companySelect.disabled = false;
-                } else {
-                    companySelect.disabled = true;
-                }
-            } else {
-                companySelect.disabled = true;
-            }
-        }
-
-        // Load data on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchSheetData();
-            loadDialogues();
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('checkDate').value = today;
-        });
-
-        // Load Dialogues from Firestore
-        async function loadDialogues() {
-            showLoading();
-            const tableBody = document.getElementById('dialogueTableBody');
-            tableBody.innerHTML = '';
-            try {
-                const querySnapshot = await db.collection('testHistorykaiwadinhki').orderBy('timestamp', 'desc').get();
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    const row = document.createElement('tr');
-                    row.dataset.docId = doc.id;
-                    row.innerHTML = `
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.className)}</td>
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.personInCharge)}</td>
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.union)}</td>
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.company)}</td>
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.note)}</td>
-                        <td class="px-4 py-3 border-b">${DOMPurify.sanitize(data.checkDate)}</td>
-                        <td class="px-4 py-3 border-b text-center">
-                            <button onclick="editDialogue(this)" class="text-blue-500 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteDialogue(this)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error('Error loading dialogues:', error);
-                alert('Không thể tải dữ liệu từ Firestore: ' + error.message);
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Search Function
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#dialogueTableBody tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-
-        // Open Modal for Adding
-        function addNewDialogue() {
-            document.getElementById('modalTitle').textContent = 'Thêm Kiểm Tra Hội Thoại';
-            document.getElementById('dialogueForm').reset();
-            editingRow = null;
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('checkDate').value = today;
-            populateClassDropdown();
-            document.getElementById('personInCharge').innerHTML = '<option value="">Chọn Phụ Trách</option>';
-            document.getElementById('union').innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>';
-            document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>';
-            document.getElementById('union').disabled = true;
-            document.getElementById('company').disabled = true;
-            document.getElementById('dialogueModal').classList.remove('hidden');
-        }
-
-        // Open Modal for Editing
-        function editDialogue(button) {
-            editingRow = button.closest('tr');
-            document.getElementById('modalTitle').textContent = 'Sửa Kiểm Tra Hội Thoại';
-            document.getElementById('class').value = editingRow.cells[0].textContent;
-            populatePersonInChargeDropdown(editingRow.cells[0].textContent);
-            document.getElementById('personInCharge').value = editingRow.cells[1].textContent;
-            populateUnionDropdown(editingRow.cells[0].textContent, editingRow.cells[1].textContent);
-            document.getElementById('union').value = editingRow.cells[2].textContent;
-            populateCompanyDropdown(editingRow.cells[0].textContent, editingRow.cells[1].textContent, editingRow.cells[2].textContent);
-            document.getElementById('company').value = editingRow.cells[3].textContent;
-            document.getElementById('note').value = editingRow.cells[4].textContent;
-            document.getElementById('checkDate').value = editingRow.cells[5].textContent;
-            document.getElementById('dialogueModal').classList.remove('hidden');
-        }
-
-        // Close Modal
-        function closeModal() {
-            document.getElementById('dialogueModal').classList.add('hidden');
-            document.getElementById('dialogueForm').reset();
-            editingRow = null;
-        }
-
-        // Delete Dialogue from Firestore
-        async function deleteDialogue(button) {
-            if (confirm('Bạn có chắc chắn muốn xóa thông tin này?')) {
-                showLoading();
-                const row = button.closest('tr');
-                const docId = row.dataset.docId;
-                try {
-                    await db.collection('testHistorykaiwadinhki').doc(docId).delete();
-                    row.remove();
-                    alert('Xóa thành công!');
-                } catch (error) {
-                    console.error('Error deleting dialogue:', error);
-                    alert('Đã xảy ra lỗi khi xóa dữ liệu: ' + error.message);
-                } finally {
-                    hideLoading();
-                }
-            }
-        }
-
-        // Dropdown Event Listeners
-        document.getElementById('class').addEventListener('change', function(e) {
-            const selectedClass = e.target.value;
-            populatePersonInChargeDropdown(selectedClass);
-            document.getElementById('personInCharge').value = '';
-            document.getElementById('union').innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>';
-            document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>';
-            document.getElementById('union').disabled = true;
-            document.getElementById('company').disabled = true;
-        });
-
-        document.getElementById('personInCharge').addEventListener('change', function(e) {
-            const selectedClass = document.getElementById('class').value;
-            const selectedPersonInCharge = e.target.value;
-            populateUnionDropdown(selectedClass, selectedPersonInCharge);
-            document.getElementById('union').value = '';
-            document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>';
-            document.getElementById('company').disabled = true;
-        });
-
-        document.getElementById('union').addEventListener('change', function(e) {
-            const selectedClass = document.getElementById('class').value;
-            const selectedPersonInCharge = document.getElementById('personInCharge').value;
-            const selectedUnion = e.target.value;
-            populateCompanyDropdown(selectedClass, selectedPersonInCharge, selectedUnion);
-            document.getElementById('company').value = '';
-        });
-
-        // Form Submission
-        document.getElementById('dialogueForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            showLoading();
-
-            const className = DOMPurify.sanitize(toUpperCase(document.getElementById('class').value));
-            const personInCharge = DOMPurify.sanitize(toUpperCase(document.getElementById('personInCharge').value));
-            const union = DOMPurify.sanitize(toUpperCase(document.getElementById('union').value || ''));
-            const company = DOMPurify.sanitize(toUpperCase(document.getElementById('company').value || ''));
-            const note = DOMPurify.sanitize(document.getElementById('note').value);
-            const checkDate = DOMPurify.sanitize(document.getElementById('checkDate').value);
-
-            if (!className || !personInCharge || !checkDate) {
-                alert('Vui lòng điền đầy đủ các trường bắt buộc: Lớp, Phụ Trách, Ngày Kiểm Tra.');
-                hideLoading();
-                return;
+        sheetData = rawData
+          .filter(item => item['Lớp'] && item['Lớp'].trim())
+          .map(item => {
+            let hoTen = 'Không rõ';
+            const possibleNameKeys = ['Họ Tên', 'Họ và Tên', 'Họ tên', 'Tên', 'Full Name', 'Họ Tên Học Viên', 'Họ Tên HV', 'Name'];
+            for (const key of possibleNameKeys) {
+              if (item[key] && item[key].trim()) {
+                hoTen = item[key].trim();
+                break;
+              }
             }
 
-            const dialogueData = {
-                className,
-                personInCharge,
-                union,
-                company,
-                note,
-                checkDate,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            return {
+              ...item,
+              'Nghiệp Đoàn': (item['Nghiệp Đoàn'] || '').trim().toUpperCase(),
+              'Công Ty': (item['Công Ty'] || '').trim().toUpperCase(),
+              'Lớp': item['Lớp'].trim().toUpperCase(),
+              'Phụ Trách': (item['Phụ Trách'] || '').trim().toUpperCase(),
+              'Họ Tên': hoTen
             };
+          });
 
-            try {
-                if (editingRow) {
-                    const docId = editingRow.dataset.docId;
-                    await db.collection('testHistorykaiwadinhki').doc(docId).update(dialogueData);
-                    editingRow.cells[0].textContent = className;
-                    editingRow.cells[1].textContent = personInCharge;
-                    editingRow.cells[2].textContent = union || '';
-                    editingRow.cells[3].textContent = company || '';
-                    editingRow.cells[4].textContent = note;
-                    editingRow.cells[5].textContent = checkDate;
-                } else {
-                    const docRef = await db.collection('testHistorykaiwadinhki').add(dialogueData);
-                    const newRow = document.createElement('tr');
-                    newRow.dataset.docId = docRef.id;
-                    newRow.innerHTML = `
-                        <td class="px-4 py-3 border-b">${className}</td>
-                        <td class="px-4 py-3 border-b">${personInCharge}</td>
-                        <td class="px-4 py-3 border-b">${union || ''}</td>
-                        <td class="px-4 py-3 border-b">${company || ''}</td>
-                        <td class="px-4 py-3 border-b">${note}</td>
-                        <td class="px-4 py-3 border-b">${checkDate}</td>
-                        <td class="px-4 py-3 border-b text-center">
-                            <button onclick="editDialogue(this)" class="text-blue-500 hover:text-blue-700 mr-2"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteDialogue(this)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    document.getElementById('dialogueTableBody').prepend(newRow);
-                }
-                alert('Dữ liệu đã được lưu thành công!');
-                closeModal();
-            } catch (error) {
-                console.error('Error saving to Firestore:', error);
-                alert('Đã xảy ra lỗi khi lưu dữ liệu: ' + error.message);
-            } finally {
-                hideLoading();
-            }
+        populateClassDropdown();
+        populateLessonFilter();
+      } catch (error) {
+        console.error('Error:', error);
+        loading.innerHTML = 'Không thể tải dữ liệu từ SheetDB. Vui lòng kiểm tra URL hoặc kết nối.';
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    function populateClassDropdown() {
+      const classSelect = document.getElementById('class');
+      classSelect.innerHTML = '<option value="">Chọn Lớp</option>';
+      const unique = [...new Set(sheetData.map(item => item['Lớp']))].sort();
+      unique.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls; opt.textContent = cls;
+        classSelect.appendChild(opt);
+      });
+    }
+
+    function populateLessonFilter() {
+      const select = document.getElementById('lessonSelect');
+      select.innerHTML = '<option value="all">Tất cả các bài</option>';
+      lessons.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l; opt.textContent = `Bài ${l}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function onFilterChange() {
+      const cls = document.getElementById('class').value;
+      const personSelect = document.getElementById('personInCharge');
+      personSelect.innerHTML = '<option value="">Chọn Phụ Trách</option>'; personSelect.disabled = true;
+      document.getElementById('union').innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; document.getElementById('union').disabled = true;
+      document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
+      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
+
+      if (cls) {
+        const filtered = sheetData.filter(i => i['Lớp'] === cls);
+        const persons = [...new Set(filtered.map(i => i['Phụ Trách']).filter(Boolean))].sort();
+        persons.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p; opt.textContent = p;
+          personSelect.appendChild(opt);
         });
-    </script>
+        personSelect.disabled = false;
+      }
+      updateStartButton();
+    }
+
+    function onPersonChange() {
+      const cls = document.getElementById('class').value;
+      const person = document.getElementById('personInCharge').value;
+      const unionSelect = document.getElementById('union');
+      unionSelect.innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; unionSelect.disabled = true;
+      document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
+      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
+
+      if (cls && person) {
+        const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person);
+        const unions = [...new Set(filtered.map(i => i['Nghiệp Đoàn']).filter(Boolean))].sort();
+        unions.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u; opt.textContent = u;
+          unionSelect.appendChild(opt);
+        });
+        unionSelect.disabled = false;
+      }
+      updateStartButton();
+    }
+
+    function onUnionChange() {
+      const cls = document.getElementById('class').value;
+      const person = document.getElementById('personInCharge').value;
+      const union = document.getElementById('union').value;
+      const companySelect = document.getElementById('company');
+      companySelect.innerHTML = '<option value="">Chọn Công Ty</option>'; companySelect.disabled = true;
+      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
+
+      if (cls && person && union) {
+        const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person && i['Nghiệp Đoàn'] === union);
+        const companies = [...new Set(filtered.map(i => i['Công Ty']).filter(Boolean))].sort();
+        companies.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c; opt.textContent = c;
+          companySelect.appendChild(opt);
+        });
+        companySelect.disabled = false;
+      }
+      updateStartButton();
+    }
+
+    function onCompanyChange() {
+      const cls = document.getElementById('class').value;
+      const person = document.getElementById('personInCharge').value;
+      const union = document.getElementById('union').value;
+      const company = document.getElementById('company').value;
+      const studentSelect = document.getElementById('student');
+      studentSelect.innerHTML = '<option value="">Chọn Họ và Tên</option>'; studentSelect.disabled = true;
+
+      if (cls && person && union && company) {
+        const filteredStudents = sheetData.filter(i =>
+          i['Lớp'] === cls &&
+          i['Phụ Trách'] === person &&
+          i['Nghiệp Đoàn'] === union &&
+          i['Công Ty'] === company &&
+          i['Họ Tên'] && i['Họ Tên'] !== 'Không rõ'
+        );
+        const sortedStudents = filteredStudents.sort((a, b) => a['Họ Tên'].localeCompare(b['Họ Tên']));
+        sortedStudents.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s['Họ Tên'];
+          opt.textContent = s['Họ Tên'];
+          studentSelect.appendChild(opt);
+        });
+        studentSelect.disabled = sortedStudents.length === 0;
+      }
+      updateStartButton();
+    }
+
+    function updateStartButton() {
+      const cls = document.getElementById('class').value;
+      const person = document.getElementById('personInCharge').value;
+      const union = document.getElementById('union').value;
+      const company = document.getElementById('company').value;
+      const studentVal = document.getElementById('student').value;
+      const btn = document.getElementById('btnStart');
+      const canStart = cls && person && union && company && studentVal;
+      btn.disabled = !canStart;
+      btn.classList.toggle('enabled', canStart);
+    }
+
+    function startChecking() {
+      isChecking = true;
+      const container = document.getElementById('studentContainer');
+      container.style.display = 'block';
+      document.getElementById('lessonFilter').style.display = 'block';
+      renderStudents();
+      document.getElementById('historyButton').style.display = 'none';
+      document.getElementById('failButton').style.display = 'inline-block';
+      hideFailList();
+    }
+
+    function getSelectedStudent() {
+      const name = document.getElementById('student').value;
+      return sheetData.find(s => s['Họ Tên'] === name) || null;
+    }
+
+    function getFilteredQuestions() {
+      if (currentLesson === 'all') return questions;
+      return questions.filter(q => q.lesson === parseInt(currentLesson));
+    }
+
+    function renderStudents() {
+      const container = document.getElementById('studentContainer');
+      const student = getSelectedStudent();
+      const filteredQuestions = getFilteredQuestions();
+
+      if (!student) {
+        container.innerHTML = '<div class="no-data">Vui lòng chọn học viên từ danh sách.</div>';
+        return;
+      }
+
+      const key = `check_${student['Họ Tên']}_${student['Lớp']}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+
+      let html = `
+        <div class="student-card">
+          <div class="student-header">${student['Họ Tên']} - ${student['Lớp']}
+            <span style="float:right;font-size:0.9em;">${student['Công Ty']} | ${student['Nghiệp Đoàn']}</span>
+          </div>
+          <div style="padding:15px;">
+            <table class="question-table">
+              <thead>
+                <tr>
+                  <th class="question-id">ID</th>
+                  <th class="question-text">Nội dung câu hỏi</th>
+                  <th class="check-col">Đạt</th>
+                  <th class="check-col">Không Đạt</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      filteredQuestions.forEach(q => {
+        const qid = q.id;
+        const status = saved[qid] || '';
+        html += `
+          <tr>
+            <td class="question-id">${q.id}</td>
+            <td class="question-text">${q.text}</td>
+            <td class="check-col">
+              <div class="check-circle ${status === 'pass' ? 'pass' : ''}"
+                   onclick="toggleResult('${key}', '${qid}', 'pass')"></div>
+            </td>
+            <td class="check-col">
+              <div class="check-circle ${status === 'fail' ? 'fail' : ''}"
+                   onclick="toggleResult('${key}', '${qid}', 'fail')"></div>
+            </td>
+          </tr>
+        `;
+      });
+
+      const checkedQuestions = filteredQuestions.filter(q => saved[q.id]);
+      const passCount = checkedQuestions.filter(q => saved[q.id] === 'pass').length;
+      const totalChecked = checkedQuestions.length;
+      const percent = totalChecked > 0 ? (passCount / totalChecked * 100).toFixed(1) : '0.0';
+
+      html += `
+              </tbody>
+            </table>
+            <div class="summary">
+              Đạt: <strong>${passCount}/${totalChecked}</strong> (${percent}%)
+              ${totalChecked - passCount > 0 ? ` | <span class="fail-summary">Không đạt: ${totalChecked - passCount} câu</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function toggleResult(key, qid, value) {
+      const data = JSON.parse(localStorage.getItem(key) || '{}');
+      if (data[qid] === value) {
+        delete data[qid];
+      } else {
+        data[qid] = value;
+      }
+      localStorage.setItem(key, JSON.stringify(data));
+      renderStudents();
+    }
+
+    function showFailedQuestions() {
+      const failList = document.getElementById('failList');
+      failList.innerHTML = '';
+      let hasFail = false;
+
+      const filteredQuestions = getFilteredQuestions();
+      const student = getSelectedStudent();
+      if (!student) return;
+
+      const key = `check_${student['Họ Tên']}_${student['Lớp']}`;
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      const fails = filteredQuestions.filter(q => saved[q.id] === 'fail').map(q => q.id);
+
+      if (fails.length > 0) {
+        hasFail = true;
+        const div = document.createElement('div');
+        div.className = 'fail-item';
+        div.innerHTML = `<strong>${student['Họ Tên']} - ${student['Lớp']}</strong>: 
+          ${fails.map(id => `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}
+        `;
+        failList.appendChild(div);
+      }
+
+      failList.style.display = hasFail ? 'block' : 'none';
+      if (!hasFail) {
+        failList.innerHTML = '<em>Không có câu nào bị Không Đạt.</em>';
+        failList.style.display = 'block';
+      }
+    }
+
+    function showHistory() {
+      const failList = document.getElementById('failList');
+      failList.innerHTML = '';
+      let hasHistory = false;
+
+      // Quét localStorage để tìm tất cả key check_*
+      const allKeys = Object.keys(localStorage).filter(k => k.startsWith('check_'));
+      allKeys.forEach(key => {
+        const saved = JSON.parse(localStorage.getItem(key) || '{}');
+        const [_, name, cls] = key.match(/check_(.*)_(.*)/) || [];
+        const fails = questions.filter(q => saved[q.id] === 'fail').map(q => q.id);
+        if (fails.length > 0) {
+          hasHistory = true;
+          const div = document.createElement('div');
+          div.className = 'fail-item';
+          div.innerHTML = `<strong>${name} - ${cls}</strong>: 
+            ${fails.map(id => `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}
+          `;
+          failList.appendChild(div);
+        }
+      });
+
+      failList.style.display = hasHistory ? 'block' : 'none';
+      if (!hasHistory) {
+        failList.innerHTML = '<em>Chưa có lịch sử kiểm tra.</em>';
+        failList.style.display = 'block';
+      }
+    }
+
+    function hideFailList() {
+      document.getElementById('failList').style.display = 'none';
+    }
+
+    // Gán sự kiện
+    document.getElementById('class').onchange = onFilterChange;
+    document.getElementById('personInCharge').onchange = onPersonChange;
+    document.getElementById('union').onchange = onUnionChange;
+    document.getElementById('company').onchange = onCompanyChange;
+    document.getElementById('student').onchange = updateStartButton;
+
+    window.onload = () => {
+      fetchSheetData();
+    };
+  </script>
 </body>
 </html>
