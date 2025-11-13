@@ -17,12 +17,10 @@
     }
     .btn-start.enabled { background: #27ae60; opacity: 1; cursor: pointer; }
     .btn-start.enabled:hover { background: #219653; }
-
     .lesson-filter { margin: 15px 0; text-align: center; }
     .lesson-filter select {
       padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; width: 200px;
     }
-
     .loading { text-align: center; padding: 20px; color: #777; }
     .student-list { margin-top: 20px; display: none; }
     .student-card { border: 1px solid #eee; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
@@ -33,7 +31,6 @@
     .question-id { font-weight: bold; color: #2c3e50; width: 50px; }
     .question-text { flex: 1; }
     .check-col { text-align: center; width: 80px; }
-
     .check-circle {
       width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd;
       display: inline-block; cursor: pointer;
@@ -44,27 +41,47 @@
     .check-circle.fail {
       background: #e74c3c; border-color: #e74c3c;
     }
-
     .summary { margin: 10px 0; font-weight: bold; color: #27ae60; }
     .fail-summary { color: #e74c3c; }
-    .filter-fail { margin: 20px 0; text-align: center; display: block; } /* Default visible for history */
-    .filter-fail button { padding: 12px 24px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    .filter-fail { margin: 20px 0; text-align: center; display: block; }
+    .filter-fail button { padding: 12px 24px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 0 5px; }
     .filter-fail button:hover { background: #d35400; }
     .fail-list { margin-top: 20px; background: #fdf2e9; padding: 15px; border-radius: 8px; border: 1px solid #f39c12; display: none; }
-    .fail-item { margin: 8px 0; padding: 10px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .fail-class-group {
+      margin-bottom: 25px;
+      padding: 18px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 1px solid #dee2e6;
+    }
+    .fail-class-title {
+      font-weight: bold;
+      font-size: 1.15em;
+      color: #2c3e50;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #3498db;
+    }
+    .fail-item {
+      margin: 8px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
     .no-data { text-align: center; color: #95a5a6; padding: 40px; font-size: 18px; }
-    #failButton { display: none; } /* Initial hidden for fail button */
-    #historyButton { display: inline-block; } /* Initial visible for history */
+    #failButton { display: none; }
+    #historyButton { display: inline-block; }
     @media (max-width: 768px) {
       .filters { flex-direction: column; }
       .question-table { font-size: 13px; }
+      .filter-fail button { width: 100%; margin: 5px 0; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Check Kaiwa - Học Viên</h1>
-
     <div class="filters">
       <select id="class" onchange="onFilterChange()">
         <option value="">Chọn Lớp</option>
@@ -79,21 +96,18 @@
         <option value="">Chọn Công Ty</option>
       </select>
       <select id="student" onchange="updateStartButton()" disabled>
-        <option value="">Chọn Họ và Tên</option>
+        <optionBoards value="">Chọn Họ và Tên</option>
       </select>
       <button id="btnStart" class="btn-start" disabled onclick="startChecking()">Bắt đầu kiểm tra</button>
     </div>
-
     <div class="loading" id="loading">Đang tải dữ liệu học viên...</div>
     <div id="studentContainer" class="student-list"></div>
-
     <div class="lesson-filter" id="lessonFilter" style="display:none;">
       <strong>Lọc theo bài:</strong>
       <select id="lessonSelect" onchange="currentLesson = this.value; renderStudents();">
         <option value="all">Tất cả các bài</option>
       </select>
     </div>
-
     <div class="filter-fail">
       <button id="historyButton" onclick="showHistory()">Lịch sử kiểm tra</button>
       <button id="failButton" onclick="showFailedQuestions()">Xem các câu Không Đạt</button>
@@ -101,7 +115,26 @@
     <div id="failList" class="fail-list"></div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
   <script>
+    // Cấu hình Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfy4QMD9_7PyFHpInNdKDRWuW4AYCtLJ4",
+      authDomain: "history-e4633.firebaseapp.com",
+      projectId: "history-e4633",
+      storageBucket: "history-e4633.firebasestorage.app",
+      messagingSenderId: "331974436893",
+      appId: "1:331974436893:web:10c3c6adf7b66d2b5fbef4",
+      measurementId: "G-DC055090BW"
+    };
+
+    // Khởi tạo Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     let sheetData = [];
     let currentLesson = 'all';
     let isChecking = false;
@@ -348,6 +381,29 @@
 
     const lessons = [...new Set(questions.map(q => q.lesson))].sort((a, b) => a - b);
 
+    // Hàm lưu vào Firestore
+    async function saveToFirestore(student, results) {
+      const key = `check_${encodeURIComponent(student['Họ Tên'])}_${student['Lớp']}`;
+      const timestamp = new Date();
+
+      const data = {
+        studentName: student['Họ Tên'],
+        className: student['Lớp'],
+        company: student['Công Ty'],
+        union: student['Nghiệp Đoàn'],
+        results: results,
+        currentLesson: currentLesson,
+        timestamp: timestamp
+      };
+
+      try {
+        await db.collection('testHistorykaiwadinhki').doc(key).set(data, { merge: true });
+        console.log("Đã lưu vào Firestore:", key);
+      } catch (error) {
+        console.error("Lỗi lưu Firestore:", error);
+      }
+    }
+
     async function fetchSheetData() {
       const loading = document.getElementById('loading');
       loading.style.display = 'block';
@@ -355,7 +411,6 @@
         const response = await fetch('https://sheetdb.io/api/v1/nowbvmpq7ee5q');
         if (!response.ok) throw new Error('Lỗi tải dữ liệu');
         const rawData = await response.json();
-
         sheetData = rawData
           .filter(item => item['Lớp'] && item['Lớp'].trim())
           .map(item => {
@@ -367,7 +422,6 @@
                 break;
               }
             }
-
             return {
               ...item,
               'Nghiệp Đoàn': (item['Nghiệp Đoàn'] || '').trim().toUpperCase(),
@@ -377,7 +431,6 @@
               'Họ Tên': hoTen
             };
           });
-
         populateClassDropdown();
         populateLessonFilter();
       } catch (error) {
@@ -416,7 +469,6 @@
       document.getElementById('union').innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; document.getElementById('union').disabled = true;
       document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
       document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-
       if (cls) {
         const filtered = sheetData.filter(i => i['Lớp'] === cls);
         const persons = [...new Set(filtered.map(i => i['Phụ Trách']).filter(Boolean))].sort();
@@ -437,7 +489,6 @@
       unionSelect.innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; unionSelect.disabled = true;
       document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
       document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-
       if (cls && person) {
         const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person);
         const unions = [...new Set(filtered.map(i => i['Nghiệp Đoàn']).filter(Boolean))].sort();
@@ -458,7 +509,6 @@
       const companySelect = document.getElementById('company');
       companySelect.innerHTML = '<option value="">Chọn Công Ty</option>'; companySelect.disabled = true;
       document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-
       if (cls && person && union) {
         const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person && i['Nghiệp Đoàn'] === union);
         const companies = [...new Set(filtered.map(i => i['Công Ty']).filter(Boolean))].sort();
@@ -479,7 +529,6 @@
       const company = document.getElementById('company').value;
       const studentSelect = document.getElementById('student');
       studentSelect.innerHTML = '<option value="">Chọn Họ và Tên</option>'; studentSelect.disabled = true;
-
       if (cls && person && union && company) {
         const filteredStudents = sheetData.filter(i =>
           i['Lớp'] === cls &&
@@ -537,15 +586,12 @@
       const container = document.getElementById('studentContainer');
       const student = getSelectedStudent();
       const filteredQuestions = getFilteredQuestions();
-
       if (!student) {
         container.innerHTML = '<div class="no-data">Vui lòng chọn học viên từ danh sách.</div>';
         return;
       }
-
-      const key = `check_${student['Họ Tên']}_${student['Lớp']}`;
+      const key = `check_${encodeURIComponent(student['Họ Tên'])}_${student['Lớp']}`;
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
-
       let html = `
         <div class="student-card">
           <div class="student-header">${student['Họ Tên']} - ${student['Lớp']}
@@ -563,7 +609,6 @@
               </thead>
               <tbody>
       `;
-
       filteredQuestions.forEach(q => {
         const qid = q.id;
         const status = saved[qid] || '';
@@ -582,12 +627,10 @@
           </tr>
         `;
       });
-
       const checkedQuestions = filteredQuestions.filter(q => saved[q.id]);
       const passCount = checkedQuestions.filter(q => saved[q.id] === 'pass').length;
       const totalChecked = checkedQuestions.length;
       const percent = totalChecked > 0 ? (passCount / totalChecked * 100).toFixed(1) : '0.0';
-
       html += `
               </tbody>
             </table>
@@ -598,11 +641,10 @@
           </div>
         </div>
       `;
-
       container.innerHTML = html;
     }
 
-    function toggleResult(key, qid, value) {
+    async function toggleResult(key, qid, value) {
       const data = JSON.parse(localStorage.getItem(key) || '{}');
       if (data[qid] === value) {
         delete data[qid];
@@ -610,6 +652,13 @@
         data[qid] = value;
       }
       localStorage.setItem(key, JSON.stringify(data));
+
+      // Lưu vào Firestore
+      const student = getSelectedStudent();
+      if (student) {
+        await saveToFirestore(student, data);
+      }
+
       renderStudents();
     }
 
@@ -617,25 +666,21 @@
       const failList = document.getElementById('failList');
       failList.innerHTML = '';
       let hasFail = false;
-
       const filteredQuestions = getFilteredQuestions();
       const student = getSelectedStudent();
       if (!student) return;
-
-      const key = `check_${student['Họ Tên']}_${student['Lớp']}`;
+      const key = `check_${encodeURIComponent(student['Họ Tên'])}_${student['Lớp']}`;
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
       const fails = filteredQuestions.filter(q => saved[q.id] === 'fail').map(q => q.id);
-
       if (fails.length > 0) {
         hasFail = true;
         const div = document.createElement('div');
         div.className = 'fail-item';
-        div.innerHTML = `<strong>${student['Họ Tên']} - ${student['Lớp']}</strong>: 
+        div.innerHTML = `<strong>${student['Họ Tên']} - ${student['Lớp']}</strong>:
           ${fails.map(id => `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}
         `;
         failList.appendChild(div);
       }
-
       failList.style.display = hasFail ? 'block' : 'none';
       if (!hasFail) {
         failList.innerHTML = '<em>Không có câu nào bị Không Đạt.</em>';
@@ -646,42 +691,57 @@
     function showHistory() {
       const failList = document.getElementById('failList');
       failList.innerHTML = '';
-      let hasHistory = false;
-
-      // Quét localStorage để tìm tất cả key check_*
       const allKeys = Object.keys(localStorage).filter(k => k.startsWith('check_'));
+     
+      const groupedByClass = {};
       allKeys.forEach(key => {
         const saved = JSON.parse(localStorage.getItem(key) || '{}');
-        const [_, name, cls] = key.match(/check_(.*)_(.*)/) || [];
+        const match = key.match(/check_(.*)_(.*)/);
+        if (!match) return;
+        const encodedName = match[1];
+        const name = decodeURIComponent(encodedName);
+        const cls = match[2];
         const fails = questions.filter(q => saved[q.id] === 'fail').map(q => q.id);
-        if (fails.length > 0) {
-          hasHistory = true;
-          const div = document.createElement('div');
-          div.className = 'fail-item';
-          div.innerHTML = `<strong>${name} - ${cls}</strong>: 
-            ${fails.map(id => `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}
-          `;
-          failList.appendChild(div);
+        if (fails.length === 0) return;
+        if (!groupedByClass[cls]) {
+          groupedByClass[cls] = [];
         }
+        groupedByClass[cls].push({ name, fails });
       });
-
-      failList.style.display = hasHistory ? 'block' : 'none';
+      let hasHistory = Object.keys(groupedByClass).length > 0;
       if (!hasHistory) {
         failList.innerHTML = '<em>Chưa có lịch sử kiểm tra.</em>';
         failList.style.display = 'block';
+        return;
       }
+      const sortedClasses = Object.keys(groupedByClass).sort();
+      sortedClasses.forEach(cls => {
+        const classGroup = document.createElement('div');
+        classGroup.className = 'fail-class-group';
+        const classTitle = document.createElement('div');
+        classTitle.className = 'fail-class-title';
+        classTitle.textContent = `Lớp: ${cls}`;
+        classGroup.appendChild(classTitle);
+        const students = groupedByClass[cls];
+        students.sort((a, b) => a.name.localeCompare(b.name));
+        students.forEach(student => {
+          const item = document.createElement('div');
+          item.className = 'fail-item';
+          item.innerHTML = `<strong>${student.name}</strong>:
+            ${student.fails.map(id =>
+              `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;font-weight:bold;">${id}</span>`
+            ).join('')}
+          `;
+          classGroup.appendChild(item);
+        });
+        failList.appendChild(classGroup);
+      });
+      failList.style.display = 'block';
     }
 
     function hideFailList() {
       document.getElementById('failList').style.display = 'none';
     }
-
-    // Gán sự kiện
-    document.getElementById('class').onchange = onFilterChange;
-    document.getElementById('personInCharge').onchange = onPersonChange;
-    document.getElementById('union').onchange = onUnionChange;
-    document.getElementById('company').onchange = onCompanyChange;
-    document.getElementById('student').onchange = updateStartButton;
 
     window.onload = () => {
       fetchSheetData();
