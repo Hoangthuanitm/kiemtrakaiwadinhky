@@ -43,12 +43,11 @@
     .filter-fail button { padding: 12px 24px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 0 5px; }
     .filter-fail button:hover { background: #d35400; }
 
-    /* ==== KHU VỰC LỊCH SỬ – CUỘN NGANG TRÊN ĐIỆN THOẠI ==== */
+    /* ==== LỊCH SỬ – CUỘN NGANG & KHÔNG TRÀN ==== */
     .fail-list {
       margin-top: 20px; background: #fdf2e9; padding: 15px; border-radius: 8px;
       border: 1px solid #f39c12; display: none;
-      overflow-x: auto;               /* cho phép cuộn ngang */
-      -webkit-overflow-scrolling: touch; /* mượt trên iOS */
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
     }
     .fail-list::-webkit-scrollbar { height: 8px; }
     .fail-list::-webkit-scrollbar-thumb { background: #e67e22; border-radius: 4px; }
@@ -57,16 +56,32 @@
     .fail-class-group {
       margin-bottom: 25px; padding: 18px; background: #f8f9fa;
       border-radius: 10px; border: 1px solid #dee2e6;
-      min-width: 600px;               /* đảm bảo nội dung rộng hơn màn hình nhỏ */
+      min-width: 600px;
     }
     .fail-class-title {
       font-weight: bold; font-size: 1.15em; color: #2c3e50;
       margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #3498db;
     }
+
+    /* === KHUNG TRẮNG CHO MỖI HỌC VIÊN – KHÔNG TRÀN === */
     .fail-item {
-      margin: 8px 0; padding: 10px; background: white;
+      margin: 8px 0; padding: 12px; background: white;
       border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden; /* Ngăn tràn */
     }
+    .fail-item strong {
+      display: block; margin-bottom: 6px; color: #2c3e50;
+    }
+    .fail-tags {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-top: 4px;
+    }
+    .fail-tag {
+      background: #ffeaa7; color: #d35400; padding: 4px 8px;
+      border-radius: 4px; font-size: 0.85em; font-weight: bold;
+      white-space: nowrap;
+    }
+
     .no-data { text-align: center; color: #95a5a6; padding: 40px; font-size: 18px; }
     #failButton { display: none; }
     #historyButton { display: inline-block; }
@@ -75,7 +90,8 @@
       .filters { flex-direction: column; }
       .question-table { font-size: 13px; }
       .filter-fail button { width: 100%; margin: 5px 0; }
-      .fail-class-group { min-width: 500px; }   /* vẫn đủ rộng để cuộn */
+      .fail-class-group { min-width: 500px; }
+      .fail-tag { font-size: 0.8em; padding: 3px 6px; }
     }
   </style>
 </head>
@@ -134,7 +150,6 @@
     const db = firebase.firestore();
     const COLLECTION_NAME = 'testHistorykaiwadinhki';
 
-    // ---------- Dữ liệu ----------
     let sheetData = [];
     let currentLesson = 'all';
     let isChecking = false;
@@ -180,7 +195,6 @@
       }
     }
 
-    // ---------- Dropdown ----------
     function populateClassDropdown() {
       const classSelect = document.getElementById('class');
       classSelect.innerHTML = '<option value="">Chọn Lớp</option>';
@@ -201,14 +215,13 @@
       });
     }
 
-    // ---------- Filter ----------
-    function onFilterChange() { /* ... (giữ nguyên) */ }
+    // ---------- Filter (giữ nguyên) ----------
+    function onFilterChange() { /* ... */ }
     function onPersonChange() { /* ... */ }
     function onUnionChange() { /* ... */ }
     function onCompanyChange() { /* ... */ }
     function updateStartButton() { /* ... */ }
 
-    // ---------- Kiểm tra ----------
     function startChecking() {
       isChecking = true;
       document.getElementById('studentContainer').style.display = 'block';
@@ -258,7 +271,7 @@
         <span style="float:right;font-size:0.9em;">${student['Công Ty']} | ${student['Nghiệp Đoàn']}</span></div>
         <div style="padding:15px;"><table class="question-table"><thead><tr>
         <th class="question-id">ID</th><th class="question-text">Nội dung câu hỏi</th>
-        <th class="check-col">Đạt</th><th fys class="check-col">Không Đạt</th></tr></thead><tbody>`;
+        <th class="check-col">Đạt</th><th class="check-col">Không Đạt</th></tr></thead><tbody>`;
 
       filtered.forEach(q => {
         const status = saved[q.id] || '';
@@ -288,7 +301,7 @@
       renderStudents();
     };
 
-    // ---------- Fail & History ----------
+    // ---------- CẬP NHẬT: KHÔNG TRÀN ID ----------
     async function showFailedQuestions() {
       const failList = document.getElementById('failList');
       failList.innerHTML = '';
@@ -297,11 +310,15 @@
       const saved = await getSavedResults(student, student['Lớp']);
       const fails = getFilteredQuestions().filter(q => saved[q.id] === 'fail').map(q => q.id);
       if (fails.length) {
-        const div = document.createElement('div');
-        div.className = 'fail-item';
-        div.innerHTML = `<strong>${student['Họ Tên']} - ${student['Lớp']}</strong>:
-          ${fails.map(id=>`<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}`;
-        failList.appendChild(div);
+        const item = document.createElement('div');
+        item.className = 'fail-item';
+        item.innerHTML = `
+          <strong>${student['Họ Tên']} - ${student['Lớp']}</strong>
+          <div class="fail-tags">
+            ${fails.map(id => `<span class="fail-tag">${id}</span>`).join('')}
+          </div>
+        `;
+        failList.appendChild(item);
       } else {
         failList.innerHTML = '<em>Không có câu nào bị Không Đạt.</em>';
       }
@@ -340,8 +357,12 @@
           students.sort((a,b)=>a.name.localeCompare(b.name));
           students.forEach(stu => {
             const item = document.createElement('div'); item.className='fail-item';
-            item.innerHTML = `<strong>${stu.name}</strong>:
-              ${stu.fails.map(id=>`<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;font-weight:bold;">${id}</span>`).join('')}`;
+            item.innerHTML = `
+              <strong>${stu.name}</strong>
+              <div class="fail-tags">
+                ${stu.fails.map(id=>`<span class="fail-tag">${id}</span>`).join('')}
+              </div>
+            `;
             grp.appendChild(item);
           });
           failList.appendChild(grp);
@@ -354,7 +375,6 @@
 
     function hideFailList() { document.getElementById('failList').style.display = 'none'; }
 
-    // ---------- Init ----------
     window.onload = () => { fetchSheetData(); };
   </script>
 </body>
