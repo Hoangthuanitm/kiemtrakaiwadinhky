@@ -757,9 +757,11 @@
           students.forEach(student => {
             const item = document.createElement('div');
             item.className = 'fail-item';
-           item.innerHTML = `<strong>${student.name}:</strong> ${student.fails.map(id =>
-  `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;font-weight:bold;">${id}</span>`
-).join(' ')}`;
+           item.innerHTML = `<strong>${student.name}</strong>:
+  ${student.fails.map(id =>
+    `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;font-weight:bold;">${id}</span>`
+  ).join('')}
+`;
             classGroup.appendChild(item);
           });
           failList.appendChild(classGroup);
