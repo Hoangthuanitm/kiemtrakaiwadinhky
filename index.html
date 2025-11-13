@@ -33,20 +33,15 @@
     .check-col { text-align: center; width: 80px; }
     .check-circle {
       width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd;
-      display: inline-block; cursor: pointer;
+      display: inline-block; cursor: pointer; transition: all 0.2s;
     }
-    .check-circle.pass {
-      background: #27ae60; border-color: #27ae60;
-    }
-    .check-circle.fail {
-      background: #e74c3c; border-color: #e74c3c;
-    }
+    .check-circle.pass { background: #27ae60; border-color: #27ae60; }
+    .check-circle.fail { background: #e74c3c; border-color: #e74c3c; }
     .summary { margin: 10px 0; font-weight: bold; color: #27ae60; }
     .fail-summary { color: #e74c3c; }
     .filter-fail { margin: 20px 0; text-align: center; display: block; }
     .filter-fail button { padding: 12px 24px; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 0 5px; }
     .filter-fail button:hover { background: #d35400; }
-    /* ==== LỊCH SỬ – CUỘN NGANG & KHÔNG TRÀN ==== */
     .fail-list {
       margin-top: 20px; background: #fdf2e9; padding: 15px; border-radius: 8px;
       border: 1px solid #f39c12; display: none;
@@ -55,7 +50,6 @@
     .fail-list::-webkit-scrollbar { height: 8px; }
     .fail-list::-webkit-scrollbar-thumb { background: #e67e22; border-radius: 4px; }
     .fail-list::-webkit-scrollbar-track { background: #f8f9fa; border-radius: 4px; }
-
     .fail-class-group {
       margin-bottom: 25px; padding: 18px; background: #f8f9fa;
       border-radius: 10px; border: 1px solid #dee2e6;
@@ -65,12 +59,10 @@
       font-weight: bold; font-size: 1.15em; color: #2c3e50;
       margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #3498db;
     }
-
-    /* === KHUNG TRẮNG CHO MỖI HỌC VIÊN – KHÔNG TRÀN === */
     .fail-item {
       margin: 8px 0; padding: 12px; background: white;
       border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      overflow: hidden; /* Ngăn tràn */
+      overflow: hidden;
     }
     .fail-item strong {
       display: block; margin-bottom: 6px; color: #2c3e50;
@@ -84,14 +76,13 @@
       border-radius: 4px; font-size: 0.85em; font-weight: bold;
       white-space: nowrap;
     }
-
     .no-data { text-align: center; color: #95a5a6; padding: 40px; font-size: 18px; }
     #failButton { display: none; }
     #historyButton { display: inline-block; }
     @media (max-width: 768px) {
       .filters { flex-direction: column; }
       .question-table { font-size: 13px; }
-      .filter-fail button { width: 100%; margin: 5px 0; }
+      .filter-fail button { width: 100%; margin: \u1d1705px 0; }
     }
   </style>
 </head>
@@ -134,7 +125,6 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
   <script>
     // Firebase Config
     const firebaseConfig = {
@@ -146,15 +136,15 @@
       appId: "1:331974436893:web:10c3c6adf7b66d2b5fbef4",
       measurementId: "G-DC055090BW"
     };
-
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const COLLECTION_NAME = 'testHistorykaiwadinhki';
 
     let sheetData = [];
     let currentLesson = 'all';
-    let isChecking = false;
+    let currentResults = {}; // Lưu kết quả trong bộ nhớ
+    let currentStudent = null;
+    let currentClass = null;
 
     const questions = [
   { lesson: 1, id: "1.1", text: "<ruby>名<rt>な</rt></ruby><ruby>前<rt>まえ</rt></ruby>は何ですか。" },
@@ -395,10 +385,9 @@
   { lesson: 35, id: "35.6", text: "<ruby>病気<rt>びょうき</rt></ruby>の<ruby>時<rt>とき</rt></ruby>は<ruby>何<rt>なに</rt></ruby>を<ruby>食<rt>た</rt></ruby>べればいいですか。" },
   { lesson: 35, id: "35.7", text: "<ruby>道<rt>みち</rt></ruby>が<ruby>分<rt>わ</rt></ruby>からない<ruby>時<rt>とき</rt></ruby>、どうすればいいですか。" }
 ];
-
     const lessons = [...new Set(questions.map(q => q.lesson))].sort((a, b) => a - b);
 
-    // Fetch dữ liệu từ SheetDB
+    // === TẢI DỮ LIỆU ===
     async function fetchSheetData() {
       const loading = document.getElementById('loading');
       loading.style.display = 'block';
@@ -457,114 +446,35 @@
       });
     }
 
-    function onFilterChange() {
-      const cls = document.getElementById('class').value;
-      const personSelect = document.getElementById('personInCharge');
-      personSelect.innerHTML = '<option value="">Chọn Phụ Trách</option>'; personSelect.disabled = true;
-      document.getElementById('union').innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; document.getElementById('union').disabled = true;
-      document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
-      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-      if (cls) {
-        const filtered = sheetData.filter(i => i['Lớp'] === cls);
-        const persons = [...new Set(filtered.map(i => i['Phụ Trách']).filter(Boolean))].sort();
-        persons.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p; opt.textContent = p;
-          personSelect.appendChild(opt);
-        });
-        personSelect.disabled = false;
+    // === LỌC ===
+    function onFilterChange() { /* ... giữ nguyên ... */ }
+    function onPersonChange() { /* ... giữ nguyên ... */ }
+    function onUnionChange() { /* ... giữ nguyên ... */ }
+    function onCompanyChange() { /* ... giữ nguyên ... */ }
+    function updateStartButton() { /* ... giữ nguyên ... */ }
+
+    // === BẮT ĐẦU KIỂM TRA ===
+    async function startChecking() {
+      currentStudent = getSelectedStudent();
+      currentClass = currentStudent['Lớp'];
+      if (!currentStudent) return;
+
+      // LẤY KẾT QUẢ TỪ FIRESTORE MỘT LẦN DUY NHẤT
+      const key = `${encodeURIComponent(currentStudent['Họ Tên'])}_${currentClass}`;
+      try {
+        const doc = await db.collection(COLLECTION_NAME).doc(key).get();
+        currentResults = doc.exists ? doc.data().results || {} : {};
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu:", error);
+        currentResults = {};
       }
-      updateStartButton();
-    }
 
-    function onPersonChange() {
-      const cls = document.getElementById('class').value;
-      const person = document.getElementById('personInCharge').value;
-      const unionSelect = document.getElementById('union');
-      unionSelect.innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; unionSelect.disabled = true;
-      document.getElementById('company').innerHTML = '<option value="">Chọn Công Ty</option>'; document.getElementById('company').disabled = true;
-      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-      if (cls && person) {
-        const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person);
-        const unions = [...new Set(filtered.map(i => i['Nghiệp Đoàn']).filter(Boolean))].sort();
-        unions.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u; opt.textContent = u;
-          unionSelect.appendChild(opt);
-        });
-        unionSelect.disabled = false;
-      }
-      updateStartButton();
-    }
-
-    function onUnionChange() {
-      const cls = document.getElementById('class').value;
-      const person = document.getElementById('personInCharge').value;
-      const union = document.getElementById('union').value;
-      const companySelect = document.getElementById('company');
-      companySelect.innerHTML = '<option value="">Chọn Công Ty</option>'; companySelect.disabled = true;
-      document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
-      if (cls && person && union) {
-        const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person && i['Nghiệp Đoàn'] === union);
-        const companies = [...new Set(filtered.map(i => i['Công Ty']).filter(Boolean))].sort();
-        companies.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c; opt.textContent = c;
-          companySelect.appendChild(opt);
-        });
-        companySelect.disabled = false;
-      }
-      updateStartButton();
-    }
-
-    function onCompanyChange() {
-      const cls = document.getElementById('class').value;
-      const person = document.getElementById('personInCharge').value;
-      const union = document.getElementById('union').value;
-      const company = document.getElementById('company').value;
-      const studentSelect = document.getElementById('student');
-      studentSelect.innerHTML = '<option value="">Chọn Họ và Tên</option>'; studentSelect.disabled = true;
-      if (cls && person && union && company) {
-        const filteredStudents = sheetData.filter(i =>
-          i['Lớp'] === cls &&
-          i['Phụ Trách'] === person &&
-          i['Nghiệp Đoàn'] === union &&
-          i['Công Ty'] === company &&
-          i['Họ Tên'] && i['Họ Tên'] !== 'Không rõ'
-        );
-        const sortedStudents = filteredStudents.sort((a, b) => a['Họ Tên'].localeCompare(b['Họ Tên']));
-        sortedStudents.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s['Họ Tên'];
-          opt.textContent = s['Họ Tên'];
-          studentSelect.appendChild(opt);
-        });
-        studentSelect.disabled = sortedStudents.length === 0;
-      }
-      updateStartButton();
-    }
-
-    function updateStartButton() {
-      const cls = document.getElementById('class').value;
-      const person = document.getElementById('personInCharge').value;
-      const union = document.getElementById('union').value;
-      const company = document.getElementById('company').value;
-      const studentVal = document.getElementById('student').value;
-      const btn = document.getElementById('btnStart');
-      const canStart = cls && person && union && company && studentVal;
-      btn.disabled = !canStart;
-      btn.classList.toggle('enabled', canStart);
-    }
-
-    function startChecking() {
-      isChecking = true;
-      const container = document.getElementById('studentContainer');
-      container.style.display = 'block';
+      document.getElementById('studentContainer').style.display = 'block';
       document.getElementById('lessonFilter').style.display = 'block';
-      renderStudents();
       document.getElementById('historyButton').style.display = 'none';
       document.getElementById('failButton').style.display = 'inline-block';
       hideFailList();
+      renderStudents();
     }
 
     function getSelectedStudent() {
@@ -577,58 +487,49 @@
       return questions.filter(q => q.lesson === parseInt(currentLesson));
     }
 
-    // Lấy kết quả từ Firestore
-    async function getSavedResults(student, cls) {
-      const key = `${encodeURIComponent(student['Họ Tên'])}_${cls}`;
-      try {
-        const docRef = db.collection(COLLECTION_NAME).doc(key);
-        const doc = await docRef.get();
-        return doc.exists ? doc.data().results : {};
-      } catch (error) {
-        console.error("Lỗi lấy dữ liệu Firestore:", error);
-        return {};
+    // === CẬP NHẬT KẾT QUẢ NGAY LẬP TỨC ===
+    window.toggleResult = function(qid, value) {
+      if (currentResults[qid] === value) {
+        delete currentResults[qid];
+      } else {
+        currentResults[qid] = value;
       }
+      renderStudents();
+      saveResultAsync(); // Lưu bất đồng bộ, không block UI
+    };
+
+    // Lưu bất đồng bộ (không chờ)
+    let saveTimeout;
+    function saveResultAsync() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(async () => {
+        const key = `${encodeURIComponent(currentStudent['Họ Tên'])}_${currentClass}`;
+        try {
+          await db.collection(COLLECTION_NAME).doc(key).set({
+            name: currentStudent['Họ Tên'],
+            class: currentClass,
+            results: currentResults,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (error) {
+          console.error("Lỗi lưu:", error);
+        }
+      }, 500); // Debounce 500ms
     }
 
-    // Lưu kết quả vào Firestore
-    async function saveResult(student, cls, results) {
-      const key = `${encodeURIComponent(student['Họ Tên'])}_${cls}`;
-      try {
-        await db.collection(COLLECTION_NAME).doc(key).set({
-          name: student['Họ Tên'],
-          class: cls,
-          results: results,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      } catch (error) {
-        console.error("Lỗi lưu Firestore:", error);
-      }
-    }
-
-    // Xóa kết quả (nếu cần)
-    async function deleteResult(student, cls) {
-      const key = `${encodeURIComponent(student['Họ Tên'])}_${cls}`;
-      try {
-        await db.collection(COLLECTION_NAME).doc(key).delete();
-      } catch (error) {
-        console.error("Lỗi xóa:", error);
-      }
-    }
-
-    async function renderStudents() {
+    // === HIỂN THỊ ===
+    function renderStudents() {
       const container = document.getElementById('studentContainer');
-      const student = getSelectedStudent();
       const filteredQuestions = getFilteredQuestions();
-      if (!student) {
-        container.innerHTML = '<div class="no-data">Vui lòng chọn học viên từ danh sách.</div>';
+      if (!currentStudent) {
+        container.innerHTML = '<div class="no-data">Vui lòng chọn học viên.</div>';
         return;
       }
 
-      const saved = await getSavedResults(student, student['Lớp']);
       let html = `
         <div class="student-card">
-          <div class="student-header">${student['Họ Tên']} - ${student['Lớp']}
-            <span style="float:right;font-size:0.9em;">${student['Công Ty']} | ${student['Nghiệp Đoàn']}</span>
+          <div class="student-header">${currentStudent['Họ Tên']} - ${currentStudent['Lớp']}
+            <span style="float:right;font-size:0.9em;">${currentStudent['Công Ty']} | ${currentStudent['Nghiệp Đoàn']}</span>
           </div>
           <div style="padding:15px;">
             <table class="question-table">
@@ -644,28 +545,28 @@
       `;
 
       filteredQuestions.forEach(q => {
-        const qid = q.id;
-        const status = saved[qid] || '';
+        const status = currentResults[q.id] || '';
         html += `
           <tr>
             <td class="question-id">${q.id}</td>
             <td class="question-text">${q.text}</td>
             <td class="check-col">
               <div class="check-circle ${status === 'pass' ? 'pass' : ''}"
-                   onclick="toggleResult('${qid}', 'pass')"></div>
+                   onclick="toggleResult('${q.id}', 'pass')"></div>
             </td>
             <td class="check-col">
               <div class="check-circle ${status === 'fail' ? 'fail' : ''}"
-                   onclick="toggleResult('${qid}', 'fail')"></div>
+                   onclick="toggleResult('${q.id}', 'fail')"></div>
             </td>
           </tr>
         `;
       });
 
-      const checkedQuestions = filteredQuestions.filter(q => saved[q.id]);
-      const passCount = checkedQuestions.filter(q => saved[q.id] === 'pass').length;
+      const checkedQuestions = filteredQuestions.filter(q => currentResults[q.id]);
+      const passCount = checkedQuestions.filter(q => currentResults[q.id] === 'pass').length;
       const totalChecked = checkedQuestions.length;
       const percent = totalChecked > 0 ? (passCount / totalChecked * 100).toFixed(1) : '0.0';
+
       html += `
               </tbody>
             </table>
@@ -679,60 +580,28 @@
       container.innerHTML = html;
     }
 
-    window.toggleResult = async function(qid, value) {
-      const student = getSelectedStudent();
-      if (!student) return;
-
-      const saved = await getSavedResults(student, student['Lớp']);
-      if (saved[qid] === value) {
-        delete saved[qid];
-      } else {
-        saved[qid] = value;
-      }
-      await saveResult(student, student['Lớp'], saved);
-      renderStudents();
-    };
-
-    async function showFailedQuestions() {
+    // === XEM CÂU SAI & LỊCH SỬ ===
+    function showFailedQuestions() {
       const failList = document.getElementById('failList');
-      failList.innerHTML = '';
-      const student = getSelectedStudent();
-      if (!student) return;
-
-      const saved = await getSavedResults(student, student['Lớp']);
-      const filteredQuestions = getFilteredQuestions();
-      const fails = filteredQuestions.filter(q => saved[q.id] === 'fail').map(q => q.id);
-
-      if (fails.length > 0) {
-        const div = document.createElement('div');
-        div.className = 'fail-item';
-        div.innerHTML = `<strong>${student['Họ Tên']} - ${student['Lớp']}</strong>:
-          ${fails.map(id => `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;">${id}</span>`).join('')}
-        `;
-        failList.appendChild(div);
-        failList.style.display = 'block';
-      } else {
-        failList.innerHTML = '<em>Không có câu nào bị Không Đạt.</em>';
-        failList.style.display = 'block';
-      }
+      const fails = getFilteredQuestions().filter(q => currentResults[q.id] === 'fail').map(q => q.id);
+      failList.innerHTML = fails.length > 0
+        ? `<div class="fail-item"><strong>${currentStudent['Họ Tên']}:</strong> ${fails.map(id => `<span class="fail-tag">${id}</span>`).join(' ')}</div>`
+        : '<em>Không có câu nào bị Không Đạt.</em>';
+      failList.style.display = 'block';
     }
 
     async function showHistory() {
       const failList = document.getElementById('failList');
-      failList.innerHTML = '<div class="loading">Đang tải lịch sử từ Firestore...</div>';
+      failList.innerHTML = '<div class="loading">Đang tải lịch sử...</div>';
       failList.style.display = 'block';
 
       try {
         const snapshot = await db.collection(COLLECTION_NAME).get();
         const groupedByClass = {};
-
         snapshot.forEach(doc => {
           const data = doc.data();
-          const fails = Object.entries(data.results)
-            .filter(([_, v]) => v === 'fail')
-            .map(([k, _]) => k);
+          const fails = Object.keys(data.results).filter(k => data.results[k] === 'fail');
           if (fails.length === 0) return;
-
           if (!groupedByClass[data.class]) groupedByClass[data.class] = [];
           groupedByClass[data.class].push({ name: data.name, fails });
         });
@@ -747,26 +616,18 @@
         sortedClasses.forEach(cls => {
           const classGroup = document.createElement('div');
           classGroup.className = 'fail-class-group';
-          const classTitle = document.createElement('div');
-          classTitle.className = 'fail-class-title';
-          classTitle.textContent = `Lớp: ${cls}`;
-          classGroup.appendChild(classTitle);
-
-          const students = groupedByClass[cls];
-          students.sort((a, b) => a.name.localeCompare(b.name));
-          students.forEach(student => {
+          classGroup.innerHTML = `<div class="fail-class-title">Lớp: ${cls}</div>`;
+          const students = groupedByClass[cls].sort((a, b) => a.name.localeCompare(b.name));
+          students.forEach(s => {
             const item = document.createElement('div');
             item.className = 'fail-item';
-   item.innerHTML = `<strong>${student.name}:</strong> ${student.fails.map(id =>
-  `<span style="background:#ffeaa7;padding:2px 6px;border-radius:4px;margin:0 4px;font-weight:bold;">${id}</span>`
-).join(' ')}`;
+            item.innerHTML = `<strong>${s.name}:</strong> ${s.fails.map(id => `<span class="fail-tag">${id}</span>`).join(' ')}`;
             classGroup.appendChild(item);
           });
           failList.appendChild(classGroup);
         });
       } catch (error) {
-        console.error("Lỗi tải lịch sử:", error);
-        failList.innerHTML = '<em>Lỗi tải lịch sử từ Firestore.</em>';
+        failList.innerHTML = '<em>Lỗi tải lịch sử.</em>';
       }
     }
 
@@ -774,7 +635,118 @@
       document.getElementById('failList').style.display = 'none';
     }
 
+    // === KHỞI TẠO ===
     window.onload = () => {
+      // Gắn lại các hàm lọc (copy từ cũ)
+      window.onFilterChange = onFilterChange;
+      window.onPersonChange = onPersonChange;
+      window.onUnionChange = onUnionChange;
+      window.onCompanyChange = onCompanyChange;
+      window.updateStartButton = updateStartButton;
+
+      // Định nghĩa lại các hàm lọc (copy nguyên)
+      function onFilterChange() {
+        const cls = document.getElementById('class').value;
+        const personSelect = document.getElementById('personInCharge');
+        personSelect.innerHTML = '<option value="">Chọn Phụ Trách</option>'; personSelect.disabled = true;
+        ['union', 'company', 'student'].forEach(id => {
+          document.getElementById(id).innerHTML = `<option value="">Chọn ${id === 'union' ? 'Nghiệp Đoàn' : id === 'company' ? 'Công Ty' : 'Họ và Tên'}</option>`;
+          document.getElementById(id).disabled = true;
+        });
+        if (cls) {
+          const filtered = sheetData.filter(i => i['Lớp'] === cls);
+          const persons = [...new Set(filtered.map(i => i['Phụ Trách']).filter(Boolean))].sort();
+          persons.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p; opt.textContent = p;
+            personSelect.appendChild(opt);
+          });
+          personSelect.disabled = false;
+        }
+        updateStartButton();
+      }
+
+      function onPersonChange() {
+        const cls = document.getElementById('class').value;
+        const person = document.getElementById('personInCharge').value;
+        const unionSelect = document.getElementById('union');
+        unionSelect.innerHTML = '<option value="">Chọn Nghiệp Đoàn</option>'; unionSelect.disabled = true;
+        ['company', 'student'].forEach(id => {
+          document.getElementById(id).innerHTML = `<option value="">Chọn ${id === 'company' ? 'Công Ty' : 'Họ và Tên'}</option>`;
+          document.getElementById(id).disabled = true;
+        });
+        if (cls && person) {
+          const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person);
+          const unions = [...new Set(filtered.map(i => i['Nghiệp Đoàn']).filter(Boolean))].sort();
+          unions.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u; opt.textContent = u;
+            unionSelect.appendChild(opt);
+          });
+          unionSelect.disabled = false;
+        }
+        updateStartButton();
+      }
+
+      function onUnionChange() {
+        const cls = document.getElementById('class').value;
+        const person = document.getElementById('personInCharge').value;
+        const union = document.getElementById('union').value;
+        const companySelect = document.getElementById('company');
+        companySelect.innerHTML = '<option value="">Chọn Công Ty</option>'; companySelect.disabled = true;
+        document.getElementById('student').innerHTML = '<option value="">Chọn Họ và Tên</option>'; document.getElementById('student').disabled = true;
+        if (cls && person && union) {
+          const filtered = sheetData.filter(i => i['Lớp'] === cls && i['Phụ Trách'] === person && i['Nghiệp Đoàn'] === union);
+          const companies = [...new Set(filtered.map(i => i['Công Ty']).filter(Boolean))].sort();
+          companies.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c; opt.textContent = c;
+            companySelect.appendChild(opt);
+          });
+          companySelect.disabled = false;
+        }
+        updateStartButton();
+      }
+
+      function onCompanyChange() {
+        const cls = document.getElementById('class').value;
+        const person = document.getElementById('personInCharge').value;
+        const union = document.getElementById('union').value;
+        const company = document.getElementById('company').value;
+        const studentSelect = document.getElementById('student');
+        studentSelect.innerHTML = '<option value="">Chọn Họ và Tên</option>'; studentSelect.disabled = true;
+        if (cls && person && union && company) {
+          const filteredStudents = sheetData.filter(i =>
+            i['Lớp'] === cls &&
+            i['Phụ Trách'] === person &&
+            i['Nghiệp Đoàn'] === union &&
+            i['Công Ty'] === company &&
+            i['Họ Tên'] && i['Họ Tên'] !== 'Không rõ'
+          );
+          const sortedStudents = filteredStudents.sort((a, b) => a['Họ Tên'].localeCompare(b['Họ Tên']));
+          sortedStudents.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s['Họ Tên'];
+            opt.textContent = s['Họ Tên'];
+            studentSelect.appendChild(opt);
+          });
+          studentSelect.disabled = sortedStudents.length === 0;
+        }
+        updateStartButton();
+      }
+
+      function updateStartButton() {
+        const cls = document.getElementById('class').value;
+        const person = document.getElementById('personInCharge').value;
+        const union = document.getElementById('union').value;
+        const company = document.getElementById('company').value;
+        const studentVal = document.getElementById('student').value;
+        const btn = document.getElementById('btnStart');
+        const canStart = cls && person && union && company && studentVal;
+        btn.disabled = !canStart;
+        btn.classList.toggle('enabled', canStart);
+      }
+
       fetchSheetData();
     };
   </script>
